@@ -1,0 +1,36 @@
+[project]
+name = "ledgerline"
+version = "0.1.0"
+description = "Personal household spending dashboard backend"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "sqlalchemy>=2.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "alembic>=1.13.0",
+    "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "httpx>=0.27.0",
+    "ruff>=0.4.0",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"app/models/*.py" = ["UP037", "F821"]
+"alembic/env.py" = ["I001"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
