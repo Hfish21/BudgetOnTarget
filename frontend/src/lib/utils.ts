@@ -96,3 +96,54 @@ export const CHART_COLORS = [
   "#84cc16", // lime-500
   "#ec4899", // pink-500
 ];
+
+export const GROUP_COLORS: Record<string, string> = {
+  necessary: "#60a5fa",
+  discretionary: "#a78bfa",
+  anomalous: "#fbbf24",
+  income: "#34d399",
+};
+
+export const GROUP_ORDER: string[] = [
+  "income",
+  "necessary",
+  "discretionary",
+  "anomalous",
+];
+
+export function getGroupLabel(group: string): string {
+  switch (group) {
+    case "income":
+      return "Income";
+    case "necessary":
+      return "Necessary";
+    case "discretionary":
+      return "Discretionary";
+    case "anomalous":
+      return "Anomalous";
+    default:
+      return group;
+  }
+}
+
+export function deriveGroupStatus(
+  statuses: string[]
+): "on_target" | "in_tolerance" | "off_target" {
+  if (statuses.length === 0) return "on_target";
+  if (statuses.some((s) => s === "off_target")) return "off_target";
+  if (statuses.some((s) => s === "in_tolerance")) return "in_tolerance";
+  return "on_target";
+}
+
+export function getStatusBorderColor(status: string): string {
+  switch (status) {
+    case "on_target":
+      return "border-l-green-500";
+    case "in_tolerance":
+      return "border-l-yellow-500";
+    case "off_target":
+      return "border-l-red-500";
+    default:
+      return "border-l-gray-500";
+  }
+}

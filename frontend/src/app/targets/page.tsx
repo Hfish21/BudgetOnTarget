@@ -89,12 +89,12 @@ export default function TargetsPage() {
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-24 animate-pulse rounded-xl bg-gray-200"
+              className="h-24 animate-pulse rounded-xl bg-muted"
             />
           ))}
         </div>
       ) : targets.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center">
+        <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center">
           <p className="text-sm text-muted-foreground">
             No targets configured yet. Click &ldquo;Add Target&rdquo; to create
             your first budget target.
@@ -133,7 +133,7 @@ export default function TargetsPage() {
                       size="icon-sm"
                       onClick={() => handleDelete(target.id)}
                     >
-                      <Trash2 className="size-3.5 text-red-500" />
+                      <Trash2 className="size-3.5 text-destructive" />
                     </Button>
                   </div>
                 </CardAction>

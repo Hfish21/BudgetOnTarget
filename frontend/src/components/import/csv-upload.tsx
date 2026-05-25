@@ -93,7 +93,7 @@ export function CsvUpload({ onUploadComplete }: CsvUploadProps) {
           onChange={(e) =>
             setSelectedAccountId(Number(e.target.value) || null)
           }
-          className="h-8 rounded-lg border border-input bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+          className="h-8 rounded-lg border border-input bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
         >
           {accounts.length === 0 && (
             <option value="">No accounts available</option>
@@ -117,7 +117,7 @@ export function CsvUpload({ onUploadComplete }: CsvUploadProps) {
         className={`flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition-colors ${
           dragOver
             ? "border-primary bg-primary/5"
-            : "border-gray-300 bg-white hover:border-gray-400"
+            : "border-border bg-card hover:border-muted-foreground"
         }`}
         onClick={() => fileInputRef.current?.click()}
       >
@@ -145,7 +145,7 @@ export function CsvUpload({ onUploadComplete }: CsvUploadProps) {
                 e.stopPropagation();
                 setFile(null);
               }}
-              className="rounded p-1 hover:bg-gray-100"
+              className="rounded p-1 hover:bg-muted"
             >
               <X className="size-4 text-muted-foreground" />
             </button>
@@ -171,8 +171,8 @@ export function CsvUpload({ onUploadComplete }: CsvUploadProps) {
 
       {/* Error */}
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-          <p className="text-sm text-red-700">{error}</p>
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+          <p className="text-sm text-destructive">{error}</p>
         </div>
       )}
 
@@ -180,7 +180,7 @@ export function CsvUpload({ onUploadComplete }: CsvUploadProps) {
       {result && (
         <Card>
           <CardContent className="pt-4">
-            <h4 className="mb-3 text-sm font-semibold text-green-700">
+            <h4 className="mb-3 text-sm font-semibold text-green-400">
               Import Complete
             </h4>
             <div className="grid grid-cols-2 gap-3 text-sm">
@@ -190,13 +190,13 @@ export function CsvUpload({ onUploadComplete }: CsvUploadProps) {
               </div>
               <div>
                 <p className="text-muted-foreground">New Transactions</p>
-                <p className="font-medium text-green-600">
+                <p className="font-medium text-green-400">
                   {result.new_transactions}
                 </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Duplicates Skipped</p>
-                <p className="font-medium text-yellow-600">
+                <p className="font-medium text-yellow-400">
                   {result.duplicate_transactions}
                 </p>
               </div>

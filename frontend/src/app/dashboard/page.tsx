@@ -3,9 +3,16 @@
 import { useEffect, useState, useRef, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
-import { TargetGrid } from "@/components/dashboard/target-grid";
-import { CumulativeProgressChart } from "@/components/charts/cumulative-progress-chart";
-import type { DashboardResponse, CumulativeResponse } from "@/types";
+import { GROUP_ORDER, getGroupLabel } from "@/lib/utils";
+import { NetSummary } from "@/components/dashboard/net-summary";
+import { GroupSection } from "@/components/dashboard/group-section";
+import { GroupCumulativeChart } from "@/components/charts/group-cumulative-chart";
+import type {
+  DashboardResponse,
+  CumulativeResponse,
+  TargetAssessment,
+  SpendGroup,
+} from "@/types";
 
 function DashboardContent() {
   const searchParams = useSearchParams();
@@ -64,31 +71,45 @@ function DashboardContent() {
     return (
       <div className="space-y-6">
         <div className="space-y-2">
-          <div className="h-8 w-48 animate-pulse rounded bg-gray-200" />
-          <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
+          <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-32 animate-pulse rounded bg-muted" />
         </div>
+        <div className="h-24 animate-pulse rounded-xl bg-muted" />
+        <div className="h-96 animate-pulse rounded-xl bg-muted" />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-48 animate-pulse rounded-xl bg-gray-200"
+              className="h-48 animate-pulse rounded-xl bg-muted"
             />
           ))}
         </div>
-        <div className="h-96 animate-pulse rounded-xl bg-gray-200" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-        <p className="text-sm text-red-700">
+      <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-6">
+        <p className="text-sm text-destructive">
           Failed to load dashboard: {error}
         </p>
       </div>
     );
   }
+
+  const assessments = dashboard?.assessments || [];
+
+  const groupedAssessments: Record<string, TargetAssessment[]> = {};
+  for (const a of assessments) {
+    const group = a.spend_group;
+    if (!groupedAssessments[group]) groupedAssessments[group] = [];
+    groupedAssessments[group].push(a);
+  }
+
+  const activeGroups = GROUP_ORDER.filter(
+    (g) => groupedAssessments[g] && groupedAssessments[g].length > 0
+  );
 
   return (
     <div className="space-y-8">
@@ -99,22 +120,28 @@ function DashboardContent() {
         </p>
       </div>
 
-      <section>
-        <h3 className="mb-4 text-lg font-semibold">Target Assessments</h3>
-        <TargetGrid
-          assessments={dashboard?.assessments || []}
-          onCardClick={handleCardClick}
-        />
-      </section>
+      <NetSummary assessments={assessments} />
 
       <section ref={chartRef}>
-        <CumulativeProgressChart
+        <GroupCumulativeChart
           targets={cumulative?.targets || []}
           year={parseInt(year, 10)}
           month={parseInt(month, 10)}
           highlightedTargetId={highlightedTarget}
         />
       </section>
+
+      <div className="space-y-6">
+        {activeGroups.map((group) => (
+          <GroupSection
+            key={group}
+            groupName={getGroupLabel(group)}
+            groupKey={group as SpendGroup}
+            assessments={groupedAssessments[group]}
+            onCardClick={handleCardClick}
+          />
+        ))}
+      </div>
     </div>
   );
 }

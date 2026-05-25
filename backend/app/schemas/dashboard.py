@@ -20,6 +20,7 @@ class AssessmentResponse(BaseModel):
     target_name: str
     target_type: str
     direction: str
+    spend_group: str
     actual_value: int
     actual_display: str
     target_value: int
@@ -48,6 +49,7 @@ class CumulativeTarget(BaseModel):
     target_value: int
     target_display: str
     direction: str
+    spend_group: str
     data_points: list[CumulativeDataPoint]
 
 

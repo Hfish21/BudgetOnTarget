@@ -10,6 +10,7 @@ import {
   getStatusBgColor,
   getStatusLabel,
   getDirectionLabel,
+  formatCents,
   cn,
 } from "@/lib/utils";
 import { ArrowDown, ArrowUp, Equal } from "lucide-react";
@@ -41,8 +42,18 @@ export function TargetCard({ assessment, onClick }: TargetCardProps) {
     status,
     percent_of_target,
     direction,
+    actual_value,
+    target_value,
     history,
   } = assessment;
+
+  const delta = actual_value - target_value;
+  const isSpending = direction === "at_most";
+  const deltaIsGood = isSpending ? delta <= 0 : delta >= 0;
+  const deltaColor = delta === 0 ? "text-green-400" : deltaIsGood ? "text-green-400" : "text-red-400";
+  const barMax = Math.max(Math.min(percent_of_target, 150), 100);
+  const fillPct = (percent_of_target / barMax) * 100;
+  const targetLinePct = (100 / barMax) * 100;
 
   return (
     <Card
@@ -66,13 +77,18 @@ export function TargetCard({ assessment, onClick }: TargetCardProps) {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div>
+        <div className="flex items-baseline justify-between">
           <p className="text-2xl font-bold tracking-tight">
             {actual_display}{" "}
             <span className="text-sm font-normal text-muted-foreground">
               / {target_display}
             </span>
           </p>
+          {delta !== 0 && (
+            <span className={cn("text-sm font-semibold tabular-nums", deltaColor)}>
+              {delta > 0 ? "+" : "-"}{formatCents(Math.abs(delta))}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -80,18 +96,23 @@ export function TargetCard({ assessment, onClick }: TargetCardProps) {
             <DirectionIcon direction={direction} />
             {getDirectionLabel(direction)}
           </span>
-          <span>{percent_of_target.toFixed(1)}% of target</span>
+          <span>{percent_of_target.toFixed(1)}%</span>
         </div>
 
-        {/* Progress bar */}
-        <div className="h-1.5 w-full rounded-full bg-gray-100">
+        <div className="relative h-2 w-full rounded-full bg-muted">
           <div
             className={cn(
               "h-full rounded-full transition-all",
               getStatusBgColor(status)
             )}
-            style={{ width: `${Math.min(percent_of_target, 100)}%` }}
+            style={{ width: `${fillPct}%` }}
           />
+          {percent_of_target > 0 && (
+            <div
+              className="absolute top-[-1px] h-[calc(100%+2px)] w-0.5 rounded-full bg-foreground/60"
+              style={{ left: `${targetLinePct}%` }}
+            />
+          )}
         </div>
 
         {/* History dots */}

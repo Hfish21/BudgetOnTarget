@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -29,8 +29,18 @@ class Target(Base):
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"), nullable=True)
     description_pattern: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # Optional substring match on transaction description.
+    spend_group: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="necessary"
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+
+    __table_args__ = (
+        CheckConstraint(
+            "spend_group IN ('income', 'necessary', 'discretionary', 'anomalous')",
+            name="ck_target_spend_group",
+        ),
+    )
 
     category: Mapped["Category | None"] = relationship(back_populates="targets")

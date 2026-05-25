@@ -36,6 +36,7 @@ def _to_response(target: Target) -> TargetResponse:
         category_id=target.category_id,
         category_name=category_name,
         description_pattern=target.description_pattern,
+        spend_group=target.spend_group,
         is_active=target.is_active,
         created_at=target.created_at,
     )
@@ -68,6 +69,7 @@ def create_target(
         person_scope=body.person_scope,
         category_id=body.category_id,
         description_pattern=body.description_pattern,
+        spend_group=body.spend_group,
         is_active=body.is_active,
     )
     db.add(target)

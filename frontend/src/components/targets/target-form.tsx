@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
-import type { Target, Category, HouseholdMember } from "@/types";
+import type { Target, Category, HouseholdMember, SpendGroup } from "@/types";
 
 interface TargetFormProps {
   target?: Target | null;
@@ -45,6 +45,9 @@ export function TargetForm({ target, onSave, onCancel }: TargetFormProps) {
   );
   const [descriptionPattern, setDescriptionPattern] = useState(
     target?.description_pattern || ""
+  );
+  const [spendGroup, setSpendGroup] = useState<SpendGroup>(
+    target?.spend_group || "necessary"
   );
   const [isActive, setIsActive] = useState(target?.is_active ?? true);
 
@@ -86,6 +89,7 @@ export function TargetForm({ target, onSave, onCancel }: TargetFormProps) {
       person_scope: personScope,
       category_id: categoryId,
       description_pattern: descriptionPattern || null,
+      spend_group: spendGroup,
       is_active: isActive,
     };
 
@@ -128,7 +132,7 @@ export function TargetForm({ target, onSave, onCancel }: TargetFormProps) {
                 id="type"
                 value={targetType}
                 onChange={(e) => setTargetType(e.target.value as "monetary" | "count")}
-                className="h-8 w-full rounded-lg border border-input bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                className="h-8 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="monetary">Monetary ($)</option>
                 <option value="count">Count (#)</option>
@@ -141,7 +145,7 @@ export function TargetForm({ target, onSave, onCancel }: TargetFormProps) {
                 id="direction"
                 value={direction}
                 onChange={(e) => setDirection(e.target.value as "at_most" | "at_least" | "exactly")}
-                className="h-8 w-full rounded-lg border border-input bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                className="h-8 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="at_most">At Most</option>
                 <option value="at_least">At Least</option>
@@ -174,7 +178,7 @@ export function TargetForm({ target, onSave, onCancel }: TargetFormProps) {
                     e.target.value ? Number(e.target.value) : null
                   )
                 }
-                className="h-8 w-full rounded-lg border border-input bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                className="h-8 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">All Categories</option>
                 {categories.map((cat) => (
@@ -219,7 +223,7 @@ export function TargetForm({ target, onSave, onCancel }: TargetFormProps) {
                 onChange={(e) =>
                   setPersonScope(e.target.value || null)
                 }
-                className="h-8 w-full rounded-lg border border-input bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                className="h-8 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">Household (all)</option>
                 {members.map((m) => (
@@ -227,6 +231,21 @@ export function TargetForm({ target, onSave, onCancel }: TargetFormProps) {
                     {m.name}
                   </option>
                 ))}
+              </select>
+            </div>
+
+            <div>
+              <Label htmlFor="spendGroup">Spend Group</Label>
+              <select
+                id="spendGroup"
+                value={spendGroup}
+                onChange={(e) => setSpendGroup(e.target.value as SpendGroup)}
+                className="h-8 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="income">Income</option>
+                <option value="necessary">Necessary</option>
+                <option value="discretionary">Discretionary</option>
+                <option value="anomalous">Anomalous</option>
               </select>
             </div>
 
@@ -251,7 +270,7 @@ export function TargetForm({ target, onSave, onCancel }: TargetFormProps) {
           </div>
 
           {error && (
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-sm text-destructive">{error}</p>
           )}
 
           <div className="flex gap-2">

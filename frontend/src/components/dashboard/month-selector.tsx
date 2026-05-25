@@ -9,18 +9,18 @@ export function MonthSelector() {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2">
-        <Calendar className="size-4 text-white/40" />
-        <span className="text-sm text-white/40">Loading...</span>
+      <div className="flex items-center gap-2 rounded-lg bg-accent px-3 py-2">
+        <Calendar className="size-4 text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">Loading...</span>
       </div>
     );
   }
 
   if (months.length === 0) {
     return (
-      <div className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2">
-        <Calendar className="size-4 text-white/40" />
-        <span className="text-sm text-white/40">No data yet</span>
+      <div className="flex items-center gap-2 rounded-lg bg-accent px-3 py-2">
+        <Calendar className="size-4 text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">No data yet</span>
       </div>
     );
   }
@@ -33,7 +33,7 @@ export function MonthSelector() {
   return (
     <div className="relative">
       <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-        <Calendar className="size-4 text-white/40" />
+        <Calendar className="size-4 text-muted-foreground" />
       </div>
       <select
         value={currentValue}
@@ -41,13 +41,13 @@ export function MonthSelector() {
           const [year, month] = e.target.value.split("-").map(Number);
           setMonth(year, month);
         }}
-        className="w-full appearance-none rounded-lg bg-white/5 py-2 pl-9 pr-8 text-sm text-white/90 outline-none transition-colors hover:bg-white/10 focus:bg-white/10"
+        className="w-full appearance-none rounded-lg bg-accent py-2 pl-9 pr-8 text-sm text-foreground outline-none transition-colors hover:bg-accent/80 focus:bg-accent/80"
       >
         {months.map((m) => (
           <option
             key={`${m.year}-${m.month}`}
             value={`${m.year}-${m.month}`}
-            className="bg-[#1a1a2e] text-white"
+            className="bg-card text-foreground"
           >
             {m.label} ({m.transaction_count})
           </option>
@@ -55,7 +55,7 @@ export function MonthSelector() {
       </select>
       <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
         <svg
-          className="size-4 text-white/40"
+          className="size-4 text-muted-foreground"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"

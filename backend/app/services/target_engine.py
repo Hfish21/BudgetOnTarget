@@ -7,6 +7,7 @@ from datetime import date
 from sqlalchemy import func as sql_func
 from sqlalchemy.orm import Session
 
+from app.models.category import Category
 from app.models.household_member import HouseholdMember
 from app.models.target import Target
 from app.models.transaction import Transaction
@@ -62,6 +63,20 @@ class TargetEngine:
 
         if target.category_id is not None:
             query = query.filter(Transaction.category_id == target.category_id)
+        elif target.spend_group in ("discretionary", "anomalous"):
+            excluded_cat_ids = (
+                self.db.query(Target.category_id)
+                .filter(
+                    Target.spend_group.in_(["necessary", "income"]),
+                    Target.is_active.is_(True),
+                    Target.category_id.isnot(None),
+                )
+                .distinct()
+            )
+            query = query.filter(
+                (Transaction.category_id.notin_(excluded_cat_ids))
+                | (Transaction.category_id.is_(None))
+            )
 
         if target.description_pattern is not None:
             query = query.filter(

@@ -11,7 +11,7 @@ interface TargetGridProps {
 export function TargetGrid({ assessments, onCardClick }: TargetGridProps) {
   if (assessments.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center">
+      <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center">
         <p className="text-sm text-muted-foreground">
           No targets configured for this period. Create targets on the Targets
           page to see assessments here.

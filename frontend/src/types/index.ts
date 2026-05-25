@@ -35,6 +35,7 @@ export interface TargetAssessment {
   target_name: string;
   target_type: "monetary" | "count";
   direction: "at_most" | "at_least" | "exactly";
+  spend_group: SpendGroup;
   actual_value: number;
   actual_display: string;
   target_value: number;
@@ -69,6 +70,7 @@ export interface CumulativeTarget {
   target_value: number;
   target_display: string;
   direction: string;
+  spend_group: SpendGroup;
   data_points: CumulativeDataPoint[];
 }
 
@@ -93,6 +95,7 @@ export interface Target {
   category_id: number | null;
   category_name: string | null;
   description_pattern: string | null;
+  spend_group: SpendGroup;
   is_active: boolean;
 }
 
@@ -154,3 +157,4 @@ export type Direction = "at_most" | "at_least" | "exactly";
 export type MatchType = "substring" | "regex";
 export type AccountType = "checking" | "credit" | "savings";
 export type TargetStatus = "on_target" | "in_tolerance" | "off_target";
+export type SpendGroup = "income" | "necessary" | "discretionary" | "anomalous";

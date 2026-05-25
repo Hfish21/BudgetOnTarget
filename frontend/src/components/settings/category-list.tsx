@@ -70,14 +70,14 @@ export function CategoryList() {
         </Button>
       </form>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       {loading ? (
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-10 animate-pulse rounded bg-gray-200"
+              className="h-10 animate-pulse rounded bg-muted"
             />
           ))}
         </div>
@@ -88,7 +88,7 @@ export function CategoryList() {
           {categories.map((cat) => (
             <div
               key={cat.id}
-              className="flex items-center justify-between rounded-lg bg-white px-3 py-2 ring-1 ring-gray-100"
+              className="flex items-center justify-between rounded-lg bg-card px-3 py-2 ring-1 ring-border"
             >
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium">{cat.name}</span>
@@ -101,7 +101,7 @@ export function CategoryList() {
                 size="icon-xs"
                 onClick={() => handleDelete(cat.id)}
               >
-                <Trash2 className="size-3.5 text-muted-foreground hover:text-red-500" />
+                <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
               </Button>
             </div>
           ))}

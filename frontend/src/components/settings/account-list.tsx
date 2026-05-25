@@ -72,7 +72,7 @@ export function AccountList() {
         <select
           value={newType}
           onChange={(e) => setNewType(e.target.value)}
-          className="h-8 rounded-lg border border-input bg-white px-2 text-sm"
+          className="h-8 rounded-lg border border-input bg-card px-2 text-sm"
         >
           <option value="checking">Checking</option>
           <option value="credit">Credit</option>
@@ -91,7 +91,7 @@ export function AccountList() {
           {[1, 2].map((i) => (
             <div
               key={i}
-              className="h-10 animate-pulse rounded bg-gray-200"
+              className="h-10 animate-pulse rounded bg-muted"
             />
           ))}
         </div>
@@ -102,7 +102,7 @@ export function AccountList() {
           {accounts.map((acc) => (
             <div
               key={acc.id}
-              className="flex items-center gap-3 rounded-lg bg-white px-3 py-2 ring-1 ring-gray-100"
+              className="flex items-center gap-3 rounded-lg bg-card px-3 py-2 ring-1 ring-border"
             >
               <span className="text-sm font-medium">{acc.name}</span>
               <span className="text-xs text-muted-foreground">

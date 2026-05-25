@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
+SpendGroup = Literal["income", "necessary", "discretionary", "anomalous"]
+
 from pydantic import BaseModel
 
 
@@ -17,6 +19,7 @@ class TargetCreate(BaseModel):
     person_scope: str | None = None
     category_id: int | None = None
     description_pattern: str | None = None
+    spend_group: SpendGroup = "necessary"
     is_active: bool = True
 
 
@@ -31,6 +34,7 @@ class TargetUpdate(BaseModel):
     person_scope: str | None = None
     category_id: int | None = None
     description_pattern: str | None = None
+    spend_group: SpendGroup | None = None
     is_active: bool | None = None
 
 
@@ -50,6 +54,7 @@ class TargetResponse(BaseModel):
     category_id: int | None
     category_name: str | None = None
     description_pattern: str | None
+    spend_group: str
     is_active: bool
     created_at: datetime
 

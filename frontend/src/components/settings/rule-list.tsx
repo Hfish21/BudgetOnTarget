@@ -108,7 +108,7 @@ export function RuleList() {
           <select
             value={newMatchType}
             onChange={(e) => setNewMatchType(e.target.value)}
-            className="h-8 rounded-lg border border-input bg-white px-2 text-sm"
+            className="h-8 rounded-lg border border-input bg-card px-2 text-sm"
           >
             <option value="substring">Substring</option>
             <option value="regex">Regex</option>
@@ -120,7 +120,7 @@ export function RuleList() {
                 e.target.value ? Number(e.target.value) : null
               )
             }
-            className="h-8 rounded-lg border border-input bg-white px-2 text-sm"
+            className="h-8 rounded-lg border border-input bg-card px-2 text-sm"
           >
             <option value="">Category...</option>
             {categories.map((cat) => (
@@ -155,14 +155,14 @@ export function RuleList() {
         </Button>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       {loading ? (
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-10 animate-pulse rounded bg-gray-200"
+              className="h-10 animate-pulse rounded bg-muted"
             />
           ))}
         </div>
@@ -175,13 +175,13 @@ export function RuleList() {
           {rules.map((rule) => (
             <div
               key={rule.id}
-              className="flex items-center justify-between rounded-lg bg-white px-3 py-2 ring-1 ring-gray-100"
+              className="flex items-center justify-between rounded-lg bg-card px-3 py-2 ring-1 ring-border"
             >
               <div className="flex items-center gap-3">
                 <span className="w-12 text-xs text-muted-foreground tabular-nums">
                   #{rule.priority}
                 </span>
-                <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">
+                <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
                   {rule.pattern}
                 </code>
                 <Badge variant="secondary" className="text-xs">
@@ -201,7 +201,7 @@ export function RuleList() {
                   size="icon-xs"
                   onClick={() => handleDelete(rule.id)}
                 >
-                  <Trash2 className="size-3.5 text-muted-foreground hover:text-red-500" />
+                  <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
                 </Button>
               </div>
             </div>

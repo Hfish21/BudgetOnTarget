@@ -76,6 +76,7 @@ def get_assessments(
                 target_name=assessment.target_name,
                 target_type=assessment.target_type,
                 direction=assessment.direction,
+                spend_group=target.spend_group,
                 actual_value=assessment.actual_value,
                 actual_display=(
                     format_cents(assessment.actual_value)
@@ -133,6 +134,7 @@ def get_cumulative(
                 target_value=target.value,
                 target_display=(format_cents(target.value) if is_monetary else str(target.value)),
                 direction=target.direction,
+                spend_group=target.spend_group,
                 data_points=[CumulativeDataPoint(**dp) for dp in data_points],
             )
         )

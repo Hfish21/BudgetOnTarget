@@ -50,7 +50,7 @@ export function TransactionTable({
 
   if (transactions.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center">
+      <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center">
         <p className="text-sm text-muted-foreground">
           No transactions found for the selected filters.
         </p>
@@ -59,7 +59,7 @@ export function TransactionTable({
   }
 
   return (
-    <div className="rounded-xl border bg-white">
+    <div className="rounded-xl border bg-card">
       <Table>
         <TableHeader>
           <TableRow>
@@ -84,7 +84,7 @@ export function TransactionTable({
                 className={cn(
                   "text-right text-sm font-medium tabular-nums",
                   tx.amount_cents > 0
-                    ? "text-green-600"
+                    ? "text-green-400"
                     : "text-foreground"
                 )}
               >
@@ -101,7 +101,7 @@ export function TransactionTable({
                       }
                     }}
                     onBlur={() => setEditingId(null)}
-                    className="h-7 w-full rounded border border-input bg-white px-2 text-xs outline-none focus:ring-2 focus:ring-ring"
+                    className="h-7 w-full rounded border border-input bg-card px-2 text-xs outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="">Uncategorized</option>
                     {categories.map((cat) => (

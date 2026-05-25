@@ -21,6 +21,7 @@ interface CumulativeProgressChartProps {
   year: number;
   month: number;
   highlightedTargetId?: number | null;
+  embedded?: boolean;
 }
 
 export function CumulativeProgressChart({
@@ -28,6 +29,7 @@ export function CumulativeProgressChart({
   year,
   month,
   highlightedTargetId,
+  embedded = false,
 }: CumulativeProgressChartProps) {
   const [visibleTargets, setVisibleTargets] = useState<Set<number>>(
     new Set(targets.map((t) => t.target_id))
@@ -75,6 +77,13 @@ export function CumulativeProgressChart({
   };
 
   if (targets.length === 0) {
+    if (embedded) {
+      return (
+        <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+          No target data available for this period.
+        </div>
+      );
+    }
     return (
       <Card>
         <CardHeader>
@@ -89,14 +98,9 @@ export function CumulativeProgressChart({
     );
   }
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Cumulative Progress</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {/* Legend with toggle buttons */}
-        <div className="mb-4 flex flex-wrap gap-2">
+  const chartContent = (
+    <>
+      <div className="mb-4 flex flex-wrap gap-2">
           {targets.map((target, index) => {
             const color = CHART_COLORS[index % CHART_COLORS.length];
             const isVisible = visibleTargets.has(target.target_id);
@@ -106,14 +110,14 @@ export function CumulativeProgressChart({
                 onClick={() => toggleTarget(target.target_id)}
                 className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all ${
                   isVisible
-                    ? "border-transparent bg-gray-100 text-gray-900"
-                    : "border-gray-200 bg-white text-gray-400"
+                    ? "border-transparent bg-accent text-foreground"
+                    : "border-border bg-card text-muted-foreground"
                 }`}
               >
                 <span
                   className="inline-block size-2.5 rounded-full"
                   style={{
-                    backgroundColor: isVisible ? color : "#d1d5db",
+                    backgroundColor: isVisible ? color : "oklch(0.45 0 0)",
                   }}
                 />
                 {target.target_name}
@@ -127,26 +131,26 @@ export function CumulativeProgressChart({
             data={chartData}
             margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.25 0 0)" />
             <XAxis
               dataKey="day"
               tickLine={false}
               axisLine={false}
               fontSize={12}
-              tick={{ fill: "#9ca3af" }}
+              tick={{ fill: "oklch(0.65 0 0)" }}
             />
             <YAxis
               tickLine={false}
               axisLine={false}
               fontSize={12}
-              tick={{ fill: "#9ca3af" }}
+              tick={{ fill: "oklch(0.65 0 0)" }}
               tickFormatter={(value: number) => `$${value}`}
             />
             <Tooltip
               content={({ active, payload, label }) => {
                 if (!active || !payload) return null;
                 return (
-                  <div className="rounded-lg border bg-white px-3 py-2 shadow-md">
+                  <div className="rounded-lg border bg-card px-3 py-2 shadow-md">
                     <p className="mb-1 text-xs text-muted-foreground">
                       Day {label}
                     </p>
@@ -211,7 +215,17 @@ export function CumulativeProgressChart({
             })}
           </LineChart>
         </ResponsiveContainer>
-      </CardContent>
+    </>
+  );
+
+  if (embedded) return chartContent;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Cumulative Progress</CardTitle>
+      </CardHeader>
+      <CardContent>{chartContent}</CardContent>
     </Card>
   );
 }

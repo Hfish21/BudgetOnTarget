@@ -24,7 +24,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col bg-[#1a1a2e] text-white">
+    <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col border-r border-border bg-card text-card-foreground">
       <div className="flex h-14 items-center px-5">
         <h1 className="text-lg font-semibold tracking-tight">LedgerLine</h1>
       </div>
@@ -43,8 +43,8 @@ export function Sidebar() {
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-white/10 text-white"
-                  : "text-white/60 hover:bg-white/5 hover:text-white/90"
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground"
               )}
             >
               <item.icon className="size-4" />
@@ -54,8 +54,8 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t border-white/10 p-4">
-        <p className="text-xs text-white/40">LedgerLine v0.1.0</p>
+      <div className="border-t border-border p-4">
+        <p className="text-xs text-muted-foreground">LedgerLine v0.1.0</p>
       </div>
     </aside>
   );

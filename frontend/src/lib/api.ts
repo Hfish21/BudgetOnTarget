@@ -161,6 +161,7 @@ export const api = {
       person_scope: string | null;
       category_id: number | null;
       description_pattern: string | null;
+      spend_group: string;
       is_active: boolean;
     }) =>
       fetchApi<Target>("/targets", {
@@ -180,6 +181,7 @@ export const api = {
         person_scope: string | null;
         category_id: number | null;
         description_pattern: string | null;
+        spend_group: string;
         is_active: boolean;
       }
     ) =>

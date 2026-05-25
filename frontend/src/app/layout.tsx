@@ -25,14 +25,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-background text-foreground`}
       >
         <Suspense>
           <Sidebar />
         </Suspense>
-        <main className="ml-60 min-h-screen bg-gray-50 p-6">{children}</main>
+        <main className="ml-60 min-h-screen p-6">{children}</main>
       </body>
     </html>
   );

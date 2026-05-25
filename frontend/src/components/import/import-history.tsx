@@ -20,7 +20,7 @@ export function ImportHistory({ imports, loading }: ImportHistoryProps) {
     return (
       <div className="space-y-2">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-10 animate-pulse rounded bg-gray-200" />
+          <div key={i} className="h-10 animate-pulse rounded bg-muted" />
         ))}
       </div>
     );
@@ -28,7 +28,7 @@ export function ImportHistory({ imports, loading }: ImportHistoryProps) {
 
   if (imports.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center">
+      <div className="rounded-xl border border-dashed border-border bg-card p-6 text-center">
         <p className="text-sm text-muted-foreground">
           No imports yet. Upload a CSV file to get started.
         </p>

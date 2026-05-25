@@ -61,14 +61,14 @@ export function MemberList() {
         </Button>
       </form>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       {loading ? (
         <div className="space-y-2">
           {[1, 2].map((i) => (
             <div
               key={i}
-              className="h-10 animate-pulse rounded bg-gray-200"
+              className="h-10 animate-pulse rounded bg-muted"
             />
           ))}
         </div>
@@ -81,7 +81,7 @@ export function MemberList() {
           {members.map((member) => (
             <div
               key={member.id}
-              className="flex items-center rounded-lg bg-white px-3 py-2 ring-1 ring-gray-100"
+              className="flex items-center rounded-lg bg-card px-3 py-2 ring-1 ring-border"
             >
               <span className="text-sm font-medium">{member.name}</span>
             </div>

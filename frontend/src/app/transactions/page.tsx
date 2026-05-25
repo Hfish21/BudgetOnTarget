@@ -123,8 +123,8 @@ function TransactionsContent() {
       <TransactionFilters onFilterChange={handleFilterChange} />
 
       {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-          <p className="text-sm text-red-700">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-6">
+          <p className="text-sm text-destructive">
             Failed to load transactions: {error}
           </p>
         </div>
@@ -133,7 +133,7 @@ function TransactionsContent() {
           {[1, 2, 3, 4, 5].map((i) => (
             <div
               key={i}
-              className="h-12 animate-pulse rounded bg-gray-200"
+              className="h-12 animate-pulse rounded bg-muted"
             />
           ))}
         </div>
