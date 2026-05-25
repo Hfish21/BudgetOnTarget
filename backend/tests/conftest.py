@@ -13,7 +13,7 @@ from app.models.category import Category
 from app.models.category_rule import CategoryRule
 from app.models.household_member import HouseholdMember
 
-TEST_DATABASE_URL = "sqlite:///./test_ledgerline.db"
+TEST_DATABASE_URL = "sqlite:///./test_budgetontarget.db"
 
 engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
 

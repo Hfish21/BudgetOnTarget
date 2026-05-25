@@ -1,13 +1,13 @@
-# LedgerLine Architecture
+# BudgetOnTarget Architecture
 
-Technical blueprint for the LedgerLine personal household spending dashboard. This document contains everything an Engineer agent needs to build the MVP with zero ambiguity.
+Technical blueprint for the BudgetOnTarget personal household spending dashboard. This document contains everything an Engineer agent needs to build the MVP with zero ambiguity.
 
 ---
 
 ## 1. Project Structure
 
 ```
-ledgerline/
+budgetontarget/
 ├── CLAUDE.md
 ├── README.md
 ├── .env.example
@@ -1250,12 +1250,12 @@ export const api = {
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    database_url: str = "sqlite:///./ledgerline.db"
+    database_url: str = "sqlite:///./budgetontarget.db"
     cors_origins: list[str] = ["http://localhost:3000"]
     api_prefix: str = "/api/v1"
     log_level: str = "INFO"
 
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="LEDGERLINE_")
+    model_config = SettingsConfigDict(env_file=".env", env_prefix="BOT_")
 ```
 
 ### Frontend (`.env.local`)
@@ -1268,9 +1268,9 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 
 ```
 # Backend
-LEDGERLINE_DATABASE_URL=sqlite:///./ledgerline.db
-LEDGERLINE_CORS_ORIGINS=["http://localhost:3000"]
-LEDGERLINE_LOG_LEVEL=INFO
+BOT_DATABASE_URL=sqlite:///./budgetontarget.db
+BOT_CORS_ORIGINS=["http://localhost:3000"]
+BOT_LOG_LEVEL=INFO
 
 # Frontend
 NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1

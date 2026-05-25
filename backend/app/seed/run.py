@@ -1,4 +1,4 @@
-"""Seed script for LedgerLine.
+"""Seed script for BudgetOnTarget.
 
 Creates default household members, accounts, categories, category rules,
 and a starter target. Idempotent: skips items that already exist.

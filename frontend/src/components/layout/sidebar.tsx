@@ -32,8 +32,8 @@ export function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col border-r border-border bg-card text-card-foreground">
       <div className="flex h-14 items-center gap-2.5 px-5">
-        <img src="/logo.svg" alt="LedgerLine" className="size-7" />
-        <h1 className="text-lg font-semibold tracking-tight">LedgerLine</h1>
+        <img src="/logo.svg" alt="BudgetOnTarget" className="size-7" />
+        <h1 className="text-lg font-semibold tracking-tight">BudgetOnTarget</h1>
       </div>
 
       {(pathname.startsWith("/dashboard") || pathname.startsWith("/transactions")) && (
@@ -76,7 +76,7 @@ export function Sidebar() {
           {privacyMode ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
           {privacyMode ? "Privacy On" : "Privacy Off"}
         </button>
-        <p className="text-xs text-muted-foreground">LedgerLine v0.1.0</p>
+        <p className="text-xs text-muted-foreground">BudgetOnTarget v0.1.0</p>
       </div>
     </aside>
   );

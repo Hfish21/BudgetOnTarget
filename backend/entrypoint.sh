@@ -10,5 +10,5 @@ if [ ! -f /data/.seeded ]; then
   touch /data/.seeded
 fi
 
-echo "Starting LedgerLine API..."
+echo "Starting BudgetOnTarget API..."
 exec uv run uvicorn app.main:app --host 0.0.0.0 --port 8000

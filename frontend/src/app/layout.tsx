@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LedgerLine",
+  title: "BudgetOnTarget",
   description: "Personal household spending dashboard",
 };
 

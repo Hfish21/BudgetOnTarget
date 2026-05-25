@@ -4,10 +4,10 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ledgerline-data:/data
+      - bot-data:/data
     environment:
-      - LEDGERLINE_DATABASE_URL=sqlite:////data/ledgerline.db
-      - LEDGERLINE_CORS_ORIGINS=["http://localhost:3000"]
+      - BOT_DATABASE_URL=sqlite:////data/budgetontarget.db
+      - BOT_CORS_ORIGINS=["http://localhost:3000"]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s
@@ -26,4 +26,4 @@ services:
         condition: service_healthy
 
 volumes:
-  ledgerline-data:
+  bot-data:

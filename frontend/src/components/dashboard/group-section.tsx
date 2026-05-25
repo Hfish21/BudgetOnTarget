@@ -60,7 +60,7 @@ export function GroupSection({
   onHistoryClick,
 }: GroupSectionProps) {
   const [expanded, setExpanded] = useLocalStorage(
-    `ledgerline-group-${groupKey}`,
+    `bot-group-${groupKey}`,
     defaultExpanded
   );
 

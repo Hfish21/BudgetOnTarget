@@ -11,7 +11,7 @@ COPY . .
 
 RUN mkdir -p /data
 
-ENV LEDGERLINE_DATABASE_URL=sqlite:////data/ledgerline.db
+ENV BOT_DATABASE_URL=sqlite:////data/budgetontarget.db
 
 EXPOSE 8000
 

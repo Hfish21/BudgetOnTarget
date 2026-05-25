@@ -23,7 +23,7 @@ import os
 config = context.config
 
 # Override sqlalchemy.url from environment if set
-env_url = os.environ.get("LEDGERLINE_DATABASE_URL")
+env_url = os.environ.get("BOT_DATABASE_URL")
 if env_url:
     config.set_main_option("sqlalchemy.url", env_url)
 

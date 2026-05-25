@@ -1,5 +1,5 @@
 [project]
-name = "ledgerline"
+name = "budgetontarget"
 version = "0.1.0"
 description = "Personal household spending dashboard backend"
 requires-python = ">=3.12"

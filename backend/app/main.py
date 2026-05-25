@@ -16,7 +16,7 @@ from app.routes import (
 )
 
 app = FastAPI(
-    title="LedgerLine",
+    title="BudgetOnTarget",
     description="Personal household spending dashboard API",
     version="0.1.0",
 )

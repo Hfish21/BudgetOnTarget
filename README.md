@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="frontend/public/logo.svg" alt="LedgerLine" width="80" height="80">
+  <img src="frontend/public/logo.svg" alt="BudgetOnTarget" width="80" height="80">
 </p>
 
-<h1 align="center">LedgerLine</h1>
+<h1 align="center">BudgetOnTarget</h1>
 
 <p align="center">
   A self-hosted personal budget dashboard that turns bank CSV exports into actionable spending insights.
@@ -21,9 +21,9 @@
 
 ---
 
-## Why LedgerLine?
+## Why BudgetOnTarget?
 
-Most budgeting tools either cost money, require linking your bank account, or lock your data in someone else's cloud. LedgerLine is different:
+Most budgeting tools either cost money, require linking your bank account, or lock your data in someone else's cloud. BudgetOnTarget is different:
 
 - **Your data stays on your machine.** Everything runs locally with SQLite — no cloud, no accounts, no subscriptions.
 - **Bank-agnostic.** Import CSV exports from any bank (ships with USAA parser, easy to add others).
@@ -55,8 +55,8 @@ Rule-based engine matches transaction descriptions to categories using substring
 ## Quick Start (Docker)
 
 ```bash
-git clone https://github.com/Hfish21/LedgerLine.git
-cd LedgerLine
+git clone https://github.com/Hfish21/BudgetOnTarget.git
+cd BudgetOnTarget
 docker compose up --build
 ```
 
@@ -100,7 +100,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## CSV Import Guide
 
-LedgerLine ships with a parser for **USAA** bank CSV exports. The expected format is:
+BudgetOnTarget ships with a parser for **USAA** bank CSV exports. The expected format is:
 
 ```
 Date,Description,Original Description,Category,Amount,Status
@@ -111,16 +111,16 @@ Date,Description,Original Description,Category,Amount,Status
 | Type | Sign Convention | Example |
 |------|----------------|---------|
 | **Checking / Savings** | Negative = money out, Positive = money in | Already normalized |
-| **Credit Card** | USAA exports charges as positive — LedgerLine flips the sign automatically | A $50 charge imports as -$50 |
+| **Credit Card** | USAA exports charges as positive — BudgetOnTarget flips the sign automatically | A $50 charge imports as -$50 |
 
 ### How to Import
 
 1. Download CSV exports from your bank's website
-2. Go to **Import** in LedgerLine
+2. Go to **Import** in BudgetOnTarget
 3. Select the account (set up accounts in **Settings** first)
 4. Upload the CSV file
 
-LedgerLine deduplicates automatically — re-importing the same file or overlapping date ranges won't create duplicate transactions. Pending transactions are skipped.
+BudgetOnTarget deduplicates automatically — re-importing the same file or overlapping date ranges won't create duplicate transactions. Pending transactions are skipped.
 
 ### Adding Support for Other Banks
 
@@ -159,7 +159,7 @@ Create a new parser class in `backend/app/services/` following the pattern in `c
 ### Project Structure
 
 ```
-LedgerLine/
+BudgetOnTarget/
 ├── backend/
 │   ├── app/
 │   │   ├── models/          # SQLAlchemy models
@@ -199,9 +199,9 @@ Environment variables (set in `.env` or `docker-compose.yml`):
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `LEDGERLINE_DATABASE_URL` | `sqlite:///./ledgerline.db` | SQLAlchemy database URL |
-| `LEDGERLINE_CORS_ORIGINS` | `["http://localhost:3000"]` | Allowed CORS origins |
-| `LEDGERLINE_LOG_LEVEL` | `INFO` | Logging level |
+| `BOT_DATABASE_URL` | `sqlite:///./budgetontarget.db` | SQLAlchemy database URL |
+| `BOT_CORS_ORIGINS` | `["http://localhost:3000"]` | Allowed CORS origins |
+| `BOT_LOG_LEVEL` | `INFO` | Logging level |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8000/api/v1` | Backend API URL (frontend) |
 
 ## Contributing
