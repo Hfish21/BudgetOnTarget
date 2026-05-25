@@ -9,14 +9,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   BarChart,
   Bar,
   XAxis,
@@ -28,14 +20,14 @@ import {
   Cell,
 } from "recharts";
 import { api } from "@/lib/api";
-import { cn, formatCents } from "@/lib/utils";
+import { formatCents } from "@/lib/utils";
 import { usePrivacy } from "@/components/privacy-provider";
 import { PrivateYAxisTick } from "@/components/charts/private-axis-tick";
-import { Money } from "@/components/money";
-import type { Transaction, TargetAssessment, TargetHistoryMonth } from "@/types";
+import type { LaneHistoryMonth, SpendGroup } from "@/types";
 
-interface TargetTransactionsDialogProps {
-  assessment: TargetAssessment | null;
+interface LaneHistoryDialogProps {
+  spendGroup: SpendGroup | null;
+  groupName: string;
   year: number;
   month: number;
   open: boolean;
@@ -48,44 +40,27 @@ const STATUS_COLORS: Record<string, string> = {
   off_target: "oklch(0.65 0.22 25)",
 };
 
-export function TargetTransactionsDialog({
-  assessment,
+export function LaneHistoryDialog({
+  spendGroup,
+  groupName,
   year,
   month,
   open,
   onOpenChange,
-}: TargetTransactionsDialogProps) {
+}: LaneHistoryDialogProps) {
   const { privacyMode } = usePrivacy();
-  const [tab, setTab] = useState<"transactions" | "history">("transactions");
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [history, setHistory] = useState<TargetHistoryMonth[]>([]);
+  const [history, setHistory] = useState<LaneHistoryMonth[]>([]);
   const [loading, setLoading] = useState(false);
-  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
-    if (!open) {
-      setTab("transactions");
-      return;
-    }
-    if (!assessment) return;
+    if (!open || !spendGroup) return;
     setLoading(true);
     api.dashboard
-      .getTargetTransactions(assessment.target_id, year, month)
-      .then((data) => setTransactions(data.transactions))
-      .catch(() => setTransactions([]))
-      .finally(() => setLoading(false));
-  }, [open, assessment, year, month]);
-
-  useEffect(() => {
-    if (!open || !assessment || tab !== "history") return;
-    if (history.length > 0) return;
-    setHistoryLoading(true);
-    api.dashboard
-      .getTargetHistory(assessment.target_id)
+      .getLaneHistory(spendGroup)
       .then((data) => setHistory(data.months))
       .catch(() => setHistory([]))
-      .finally(() => setHistoryLoading(false));
-  }, [open, assessment, tab, history.length]);
+      .finally(() => setLoading(false));
+  }, [open, spendGroup]);
 
   useEffect(() => {
     if (!open) setHistory([]);
@@ -99,94 +74,29 @@ export function TargetTransactionsDialog({
         target: m.target_value / 100,
         status: m.status,
         actualDisplay: m.actual_display,
+        targetDisplay: m.target_display,
         isCurrent: m.year === year && m.month === month,
       })),
     [history, year, month]
   );
 
-  const targetLine = assessment ? assessment.target_value / 100 : 0;
+  const targetLine =
+    chartData.length > 0 ? chartData[chartData.length - 1].target : 0;
 
-  if (!assessment) return null;
+  if (!spendGroup) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>{assessment.target_name}</DialogTitle>
+          <DialogTitle>{groupName} — Monthly History</DialogTitle>
           <DialogDescription>
-            <Money>{assessment.actual_display}</Money> / <Money>{assessment.target_display}</Money>
+            Aggregate lane spend vs target over time
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex gap-1 rounded-lg bg-muted p-1">
-          <button
-            onClick={() => setTab("transactions")}
-            className={cn(
-              "flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-              tab === "transactions"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Transactions ({transactions.length})
-          </button>
-          <button
-            onClick={() => setTab("history")}
-            className={cn(
-              "flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-              tab === "history"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            History
-          </button>
-        </div>
-
         <div className="overflow-auto -mx-4 px-4 flex-1">
-          {tab === "transactions" ? (
-            loading ? (
-              <div className="space-y-2 py-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-8 animate-pulse rounded bg-muted" />
-                ))}
-              </div>
-            ) : transactions.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                No matching transactions found.
-              </p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-24">Date</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="w-28 text-right">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transactions.map((tx) => (
-                    <TableRow key={tx.id}>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {tx.date}
-                      </TableCell>
-                      <TableCell className="max-w-xs truncate text-sm">
-                        {tx.description}
-                      </TableCell>
-                      <TableCell
-                        className={cn(
-                          "text-right text-sm font-medium tabular-nums",
-                          tx.amount_cents > 0 ? "text-green-400" : "text-foreground"
-                        )}
-                      >
-                        <Money>{tx.amount_display}</Money>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )
-          ) : historyLoading ? (
+          {loading ? (
             <div className="flex h-64 items-center justify-center">
               <div className="h-48 w-full animate-pulse rounded bg-muted" />
             </div>
@@ -196,7 +106,7 @@ export function TargetTransactionsDialog({
             </p>
           ) : (
             <div className="py-4">
-              <ResponsiveContainer width="100%" height={320}>
+              <ResponsiveContainer width="100%" height={350}>
                 <BarChart
                   data={chartData}
                   margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
@@ -212,7 +122,11 @@ export function TargetTransactionsDialog({
                     axisLine={false}
                     fontSize={11}
                     tick={{ fill: "oklch(0.65 0 0)" }}
-                    interval={chartData.length > 12 ? Math.floor(chartData.length / 8) : 0}
+                    interval={
+                      chartData.length > 12
+                        ? Math.floor(chartData.length / 8)
+                        : 0
+                    }
                     angle={chartData.length > 6 ? -45 : 0}
                     textAnchor={chartData.length > 6 ? "end" : "middle"}
                     height={chartData.length > 6 ? 60 : 30}
@@ -220,7 +134,7 @@ export function TargetTransactionsDialog({
                   <YAxis
                     tickLine={false}
                     axisLine={false}
-                    tick={<PrivateYAxisTick formatter={(v: number) => `$${v}`} />}
+                    tick={<PrivateYAxisTick formatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`} />}
                   />
                   <Tooltip
                     content={({ active, payload }) => {
@@ -232,11 +146,14 @@ export function TargetTransactionsDialog({
                           <p className="mb-1 text-xs font-medium text-foreground">
                             {d.label}
                           </p>
-                          <p className="text-sm" style={{ color: STATUS_COLORS[d.status] }}>
+                          <p
+                            className="text-sm"
+                            style={{ color: STATUS_COLORS[d.status] }}
+                          >
                             Actual: <span style={blur}>{d.actualDisplay}</span>
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Target: <span style={blur}>{assessment.target_display}</span>
+                            Target: <span style={blur}>{d.targetDisplay}</span>
                           </p>
                         </div>
                       );
@@ -249,7 +166,7 @@ export function TargetTransactionsDialog({
                       strokeDasharray="6 4"
                       strokeWidth={1.5}
                       label={privacyMode ? undefined : {
-                        value: `Target: ${assessment.target_display}`,
+                        value: `Target: ${formatCents(Math.round(targetLine * 100))}`,
                         position: "insideTopRight",
                         fill: "oklch(0.65 0 0)",
                         fontSize: 11,
@@ -262,7 +179,9 @@ export function TargetTransactionsDialog({
                         key={index}
                         fill={STATUS_COLORS[entry.status]}
                         opacity={entry.isCurrent ? 1 : 0.7}
-                        stroke={entry.isCurrent ? "oklch(0.9 0 0)" : "none"}
+                        stroke={
+                          entry.isCurrent ? "oklch(0.9 0 0)" : "none"
+                        }
                         strokeWidth={entry.isCurrent ? 2 : 0}
                       />
                     ))}

@@ -6,6 +6,8 @@ import type {
   Category,
   CategoryRule,
   Target,
+  TargetHistoryResponse,
+  LaneHistoryResponse,
   ImportResult,
   ImportRecord,
   Account,
@@ -68,6 +70,14 @@ export const api = {
     getTargetTransactions: (targetId: number, year: number, month: number) =>
       fetchApi<TransactionListResponse>(
         `/dashboard/target/${targetId}/transactions?year=${year}&month=${month}`
+      ),
+    getTargetHistory: (targetId: number) =>
+      fetchApi<TargetHistoryResponse>(
+        `/dashboard/target/${targetId}/history`
+      ),
+    getLaneHistory: (spendGroup: string) =>
+      fetchApi<LaneHistoryResponse>(
+        `/dashboard/lane/${spendGroup}/history`
       ),
   },
 

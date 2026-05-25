@@ -20,6 +20,8 @@ import {
   formatCents,
   cn,
 } from "@/lib/utils";
+import { usePrivacy } from "@/components/privacy-provider";
+import { PrivateYAxisTick } from "@/components/charts/private-axis-tick";
 import { CumulativeProgressChart } from "./cumulative-progress-chart";
 import type { CumulativeTarget } from "@/types";
 
@@ -30,6 +32,8 @@ interface GroupCumulativeChartProps {
   highlightedTargetId?: number | null;
 }
 
+const yAxisFormatter = (value: number) => `$${value.toLocaleString()}`;
+
 export function GroupCumulativeChart({
   targets,
   year,
@@ -37,6 +41,7 @@ export function GroupCumulativeChart({
   highlightedTargetId,
 }: GroupCumulativeChartProps) {
   const [view, setView] = useState<"group" | "target">("group");
+  const { privacyMode } = usePrivacy();
   const [visibleGroups, setVisibleGroups] = useState<Set<string>>(
     new Set([...GROUP_ORDER, "total_in", "total_out"])
   );
@@ -260,13 +265,12 @@ export function GroupCumulativeChart({
                 <YAxis
                   tickLine={false}
                   axisLine={false}
-                  fontSize={12}
-                  tick={{ fill: "oklch(0.65 0 0)" }}
-                  tickFormatter={(value: number) => `$${value.toLocaleString()}`}
+                  tick={<PrivateYAxisTick formatter={yAxisFormatter} />}
                 />
                 <Tooltip
                   content={({ active, payload, label }) => {
                     if (!active || !payload) return null;
+                    const blur = privacyMode ? { filter: "blur(8px)", userSelect: "none" as const } : undefined;
                     return (
                       <div className="rounded-lg border bg-card px-3 py-2 shadow-md">
                         <p className="mb-1 text-xs text-muted-foreground">
@@ -286,8 +290,7 @@ export function GroupCumulativeChart({
                               className="text-sm font-medium"
                               style={{ color: entry.color }}
                             >
-                              {label}: {formatCents(Math.round(val))}
-                              {target > 0 ? ` (${pct}%)` : ""}
+                              {label}: <span style={blur}>{formatCents(Math.round(val))}{target > 0 ? ` (${pct}%)` : ""}</span>
                             </p>
                           );
                         })}
@@ -301,10 +304,10 @@ export function GroupCumulativeChart({
                   <ReferenceLine
                     key="ref-total_in"
                     y={groupTotals["total_in"] / 100}
-                    stroke="#22c55e"
+                    stroke={privacyMode ? "transparent" : "#22c55e"}
                     strokeDasharray="8 4"
                     strokeWidth={1}
-                    label={{ value: `Income $${(groupTotals["total_in"] / 100).toLocaleString()}`, position: "right", fill: "#22c55e", fontSize: 11 }}
+                    label={privacyMode ? undefined : { value: `Income $${(groupTotals["total_in"] / 100).toLocaleString()}`, position: "right", fill: "#22c55e", fontSize: 11 }}
                   />
                 )}
 
@@ -316,10 +319,10 @@ export function GroupCumulativeChart({
                     <ReferenceLine
                       key={`ref-${group}`}
                       y={target / 100}
-                      stroke="oklch(0.50 0 0)"
+                      stroke={privacyMode ? "transparent" : "oklch(0.50 0 0)"}
                       strokeDasharray="8 4"
                       strokeWidth={1}
-                      label={{
+                      label={privacyMode ? undefined : {
                         value: `${getGroupLabel(group)} $${(target / 100).toLocaleString()}`,
                         position: "right",
                         fill: "oklch(0.50 0 0)",

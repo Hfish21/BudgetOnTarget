@@ -17,6 +17,10 @@ from app.schemas.dashboard import (
     DashboardAssessmentsResponse,
     MonthStatus,
     PeriodInfo,
+    TargetHistoryMonth,
+    TargetHistoryResponse,
+    LaneHistoryMonth,
+    LaneHistoryResponse,
 )
 from app.services.target_engine import TargetEngine, format_cents, get_month_bounds
 
@@ -146,6 +150,121 @@ def get_cumulative(
     return CumulativeResponse(
         period=PeriodInfo(year=year, month=month, label=label),
         targets=cumulative_targets,
+    )
+
+
+@router.get("/lane/{spend_group}/history", response_model=LaneHistoryResponse)
+def get_lane_history(
+    spend_group: str,
+    db: Session = Depends(get_db),
+) -> LaneHistoryResponse:
+    """Get monthly aggregate actual vs target for an entire lane."""
+    valid_groups = ("income", "necessary", "discretionary", "anomalous")
+    if spend_group not in valid_groups:
+        raise HTTPException(status_code=400, detail=f"Invalid spend_group. Must be one of: {valid_groups}")
+
+    targets = (
+        db.query(Target)
+        .filter(Target.spend_group == spend_group, Target.is_active.is_(True))
+        .all()
+    )
+    if not targets:
+        return LaneHistoryResponse(spend_group=spend_group, months=[])
+
+    engine = TargetEngine(db)
+    available_months = engine.get_available_months()
+
+    is_spending = spend_group != "income"
+
+    months: list[LaneHistoryMonth] = []
+    for month_info in available_months:
+        y, m = month_info["year"], month_info["month"]
+        period_start, period_end = get_month_bounds(y, m)
+
+        total_actual = 0
+        total_target = 0
+        total_tol_upper = 0
+        total_tol_lower = 0
+        for target in targets:
+            assessment = engine.assess_target(target, period_start, period_end)
+            total_actual += assessment.actual_value
+            total_target += assessment.target_value
+            total_tol_upper += target.tolerance_upper
+            total_tol_lower += target.tolerance_lower
+
+        if is_spending:
+            if total_actual <= total_target:
+                status = "on_target"
+            elif total_actual <= total_target + total_tol_upper:
+                status = "in_tolerance"
+            else:
+                status = "off_target"
+        else:
+            if total_actual >= total_target:
+                status = "on_target"
+            elif total_actual >= total_target - total_tol_lower:
+                status = "in_tolerance"
+            else:
+                status = "off_target"
+
+        label = f"{calendar.month_abbr[m]} {y}"
+        months.append(
+            LaneHistoryMonth(
+                year=y,
+                month=m,
+                label=label,
+                actual_value=total_actual,
+                actual_display=format_cents(total_actual),
+                target_value=total_target,
+                target_display=format_cents(total_target),
+                status=status,
+            )
+        )
+
+    months.sort(key=lambda h: (h.year, h.month))
+    return LaneHistoryResponse(spend_group=spend_group, months=months)
+
+
+@router.get("/target/{target_id}/history", response_model=TargetHistoryResponse)
+def get_target_history(
+    target_id: int,
+    db: Session = Depends(get_db),
+) -> TargetHistoryResponse:
+    """Get monthly actual vs target values across all available months."""
+    target = db.query(Target).filter(Target.id == target_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Target not found.")
+
+    engine = TargetEngine(db)
+    available_months = engine.get_available_months()
+    is_monetary = target.target_type == "monetary"
+
+    months: list[TargetHistoryMonth] = []
+    for month_info in available_months:
+        y, m = month_info["year"], month_info["month"]
+        period_start, period_end = get_month_bounds(y, m)
+        assessment = engine.assess_target(target, period_start, period_end)
+        label = f"{calendar.month_abbr[m]} {y}"
+        months.append(
+            TargetHistoryMonth(
+                year=y,
+                month=m,
+                label=label,
+                actual_value=assessment.actual_value,
+                actual_display=format_cents(assessment.actual_value) if is_monetary else str(assessment.actual_value),
+                target_value=assessment.target_value,
+                target_display=format_cents(assessment.target_value) if is_monetary else str(assessment.target_value),
+                status=assessment.status,
+            )
+        )
+
+    months.sort(key=lambda h: (h.year, h.month))
+
+    return TargetHistoryResponse(
+        target_id=target.id,
+        target_name=target.name,
+        direction=target.direction,
+        months=months,
     )
 
 

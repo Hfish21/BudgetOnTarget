@@ -8,6 +8,7 @@ import { NetSummary } from "@/components/dashboard/net-summary";
 import { GroupSection } from "@/components/dashboard/group-section";
 import { GroupCumulativeChart } from "@/components/charts/group-cumulative-chart";
 import { TargetTransactionsDialog } from "@/components/dashboard/target-transactions-dialog";
+import { LaneHistoryDialog } from "@/components/dashboard/lane-history-dialog";
 import type {
   DashboardResponse,
   CumulativeResponse,
@@ -28,6 +29,7 @@ function DashboardContent() {
     null
   );
   const [selectedAssessment, setSelectedAssessment] = useState<TargetAssessment | null>(null);
+  const [selectedLane, setSelectedLane] = useState<SpendGroup | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
   const fetchDashboard = useCallback(async (y: number, m: number) => {
@@ -64,7 +66,7 @@ function DashboardContent() {
     return (
       <div className="flex h-64 items-center justify-center">
         <p className="text-sm text-muted-foreground">
-          Select a month from the sidebar to view your dashboard.
+          Select a month from the sidebar to view your monthly overview.
         </p>
       </div>
     );
@@ -117,7 +119,7 @@ function DashboardContent() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+        <h2 className="text-2xl font-bold tracking-tight">Monthly Overview</h2>
         <p className="text-sm text-muted-foreground">
           {dashboard?.period.label || ""}
         </p>
@@ -142,6 +144,7 @@ function DashboardContent() {
             groupKey={group as SpendGroup}
             assessments={groupedAssessments[group]}
             onCardClick={handleCardClick}
+            onHistoryClick={(g) => setSelectedLane(g)}
           />
         ))}
       </div>
@@ -152,6 +155,15 @@ function DashboardContent() {
         month={parseInt(month, 10)}
         open={selectedAssessment !== null}
         onOpenChange={(open) => { if (!open) setSelectedAssessment(null); }}
+      />
+
+      <LaneHistoryDialog
+        spendGroup={selectedLane}
+        groupName={selectedLane ? getGroupLabel(selectedLane) : ""}
+        year={parseInt(year, 10)}
+        month={parseInt(month, 10)}
+        open={selectedLane !== null}
+        onOpenChange={(open) => { if (!open) setSelectedLane(null); }}
       />
     </div>
   );

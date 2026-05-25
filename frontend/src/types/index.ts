@@ -79,6 +79,40 @@ export interface CumulativeResponse {
   targets: CumulativeTarget[];
 }
 
+export interface LaneHistoryMonth {
+  year: number;
+  month: number;
+  label: string;
+  actual_value: number;
+  actual_display: string;
+  target_value: number;
+  target_display: string;
+  status: "on_target" | "in_tolerance" | "off_target";
+}
+
+export interface LaneHistoryResponse {
+  spend_group: string;
+  months: LaneHistoryMonth[];
+}
+
+export interface TargetHistoryMonth {
+  year: number;
+  month: number;
+  label: string;
+  actual_value: number;
+  actual_display: string;
+  target_value: number;
+  target_display: string;
+  status: "on_target" | "in_tolerance" | "off_target";
+}
+
+export interface TargetHistoryResponse {
+  target_id: number;
+  target_name: string;
+  direction: string;
+  months: TargetHistoryMonth[];
+}
+
 export interface Target {
   id: number;
   name: string;

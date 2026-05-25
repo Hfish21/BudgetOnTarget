@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.category import Category
 from app.models.category_rule import CategoryRule
+from app.models.target import Target
 from app.models.transaction import Transaction
 from app.schemas.transaction import (
     CategorizeRequest,
@@ -54,6 +55,7 @@ def list_transactions(
     category_id: int | None = None,
     household_member_id: int | None = None,
     is_uncategorized: bool | None = None,
+    spend_group: str | None = None,
     search: str | None = None,
     sort_by: str = Query(default="date", pattern="^(date|amount_cents|description)$"),
     sort_dir: str = Query(default="desc", pattern="^(asc|desc)$"),
@@ -78,6 +80,17 @@ def list_transactions(
 
     if category_id is not None:
         query = query.filter(Transaction.category_id == category_id)
+    elif spend_group is not None:
+        lane_cat_ids = (
+            db.query(Target.category_id)
+            .filter(
+                Target.spend_group == spend_group,
+                Target.is_active.is_(True),
+                Target.category_id.isnot(None),
+            )
+            .distinct()
+        )
+        query = query.filter(Transaction.category_id.in_(lane_cat_ids))
 
     if household_member_id is not None:
         query = query.filter(Transaction.household_member_id == household_member_id)

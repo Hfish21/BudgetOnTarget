@@ -56,3 +56,37 @@ class CumulativeTarget(BaseModel):
 class CumulativeResponse(BaseModel):
     period: PeriodInfo
     targets: list[CumulativeTarget]
+
+
+class TargetHistoryMonth(BaseModel):
+    year: int
+    month: int
+    label: str
+    actual_value: int
+    actual_display: str
+    target_value: int
+    target_display: str
+    status: str
+
+
+class TargetHistoryResponse(BaseModel):
+    target_id: int
+    target_name: str
+    direction: str
+    months: list[TargetHistoryMonth]
+
+
+class LaneHistoryMonth(BaseModel):
+    year: int
+    month: int
+    label: str
+    actual_value: int
+    actual_display: str
+    target_value: int
+    target_display: str
+    status: str
+
+
+class LaneHistoryResponse(BaseModel):
+    spend_group: str
+    months: list[LaneHistoryMonth]
