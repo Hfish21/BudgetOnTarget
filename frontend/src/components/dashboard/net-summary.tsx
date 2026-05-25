@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Card } from "@/components/ui/card";
+import { Money } from "@/components/money";
 import { formatCents, getStatusBgColor } from "@/lib/utils";
 import type { TargetAssessment } from "@/types";
 
@@ -56,14 +57,14 @@ export function NetSummary({ assessments }: NetSummaryProps) {
             Money In
           </p>
           <p className="text-xl font-semibold text-foreground">
-            {formatCents(moneyIn)}
+            <Money>{formatCents(moneyIn)}</Money>
           </p>
           <div className="flex items-center gap-1.5">
             <div
               className={`size-2 rounded-full ${getStatusBgColor(incomeStatus)}`}
             />
             <p className="text-xs text-muted-foreground">
-              vs {formatCents(moneyInTarget)} target
+              vs <Money>{formatCents(moneyInTarget)}</Money> target
             </p>
           </div>
         </div>
@@ -81,8 +82,10 @@ export function NetSummary({ assessments }: NetSummaryProps) {
                   : "text-foreground"
             }`}
           >
-            {netRemaining >= 0 ? "+" : ""}
-            {formatCents(netRemaining)}
+            <Money>
+              {netRemaining >= 0 ? "+" : ""}
+              {formatCents(netRemaining)}
+            </Money>
           </p>
           <p className="text-sm text-muted-foreground">left on the table</p>
         </div>
@@ -92,14 +95,14 @@ export function NetSummary({ assessments }: NetSummaryProps) {
             Money Out
           </p>
           <p className="text-xl font-semibold text-foreground">
-            {formatCents(moneyOut)}
+            <Money>{formatCents(moneyOut)}</Money>
           </p>
           <div className="flex items-center justify-end gap-1.5">
             <div
               className={`size-2 rounded-full ${getStatusBgColor(spendStatus)}`}
             />
             <p className="text-xs text-muted-foreground">
-              vs {formatCents(moneyOutTarget)} target
+              vs <Money>{formatCents(moneyOutTarget)}</Money> target
             </p>
           </div>
         </div>

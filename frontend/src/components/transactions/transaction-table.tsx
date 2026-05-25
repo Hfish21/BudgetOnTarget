@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { Fragment, useState, useEffect, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, formatCents } from "@/lib/utils";
+import { Money } from "@/components/money";
 import type { Transaction, Category, Target } from "@/types";
 
 interface TransactionTableProps {
@@ -51,6 +52,19 @@ export function TransactionTable({
     return map;
   }, [targets]);
 
+  const dailyTotals = useMemo(() => {
+    const map: Record<string, { spent: number; earned: number }> = {};
+    for (const tx of transactions) {
+      if (!map[tx.date]) map[tx.date] = { spent: 0, earned: 0 };
+      if (tx.amount_cents < 0) {
+        map[tx.date].spent += tx.amount_cents;
+      } else {
+        map[tx.date].earned += tx.amount_cents;
+      }
+    }
+    return map;
+  }, [transactions]);
+
   const handleCategoryChange = async (
     transactionId: number,
     categoryId: number
@@ -86,11 +100,47 @@ export function TransactionTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {transactions.map((tx) => (
-            <TableRow key={tx.id}>
-              <TableCell className="text-xs text-muted-foreground">
-                {tx.date}
-              </TableCell>
+          {transactions.map((tx, idx) => {
+            const prevDate = idx > 0 ? transactions[idx - 1].date : null;
+            const showDateHeader = tx.date !== prevDate;
+            const dateObj = new Date(tx.date + "T00:00:00");
+            const dateLabel = dateObj.toLocaleDateString("en-US", {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+            });
+
+            return (
+              <Fragment key={tx.id}>
+                {showDateHeader && (
+                  <TableRow className="bg-muted/50 hover:bg-muted/50 border-t-2 border-border">
+                    <TableCell colSpan={4} className="py-2">
+                      <span className="text-xs font-bold text-foreground/80 uppercase tracking-wider">
+                        {dateLabel}
+                      </span>
+                    </TableCell>
+                    <TableCell colSpan={3} className="py-2 text-right">
+                      {dailyTotals[tx.date] && (
+                        <div className="flex items-center justify-end gap-3">
+                          {dailyTotals[tx.date].spent !== 0 && (
+                            <span className="text-xs font-semibold text-red-400">
+                              <Money>{formatCents(dailyTotals[tx.date].spent)}</Money>
+                            </span>
+                          )}
+                          {dailyTotals[tx.date].earned !== 0 && (
+                            <span className="text-xs font-semibold text-green-400">
+                              <Money>+{formatCents(dailyTotals[tx.date].earned)}</Money>
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )}
+                <TableRow key={tx.id}>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {tx.date}
+                  </TableCell>
               <TableCell className="max-w-xs truncate text-sm font-medium">
                 {tx.description}
               </TableCell>
@@ -102,7 +152,7 @@ export function TransactionTable({
                     : "text-foreground"
                 )}
               >
-                {tx.amount_display}
+                <Money>{tx.amount_display}</Money>
               </TableCell>
               <TableCell>
                 {editingId === tx.id ? (
@@ -174,7 +224,9 @@ export function TransactionTable({
                 {tx.account_name}
               </TableCell>
             </TableRow>
-          ))}
+              </Fragment>
+            );
+          })}
         </TableBody>
       </Table>
     </div>

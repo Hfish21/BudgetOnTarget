@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
+import { PrivacyProvider } from "@/components/privacy-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -29,10 +30,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-background text-foreground`}
       >
-        <Suspense>
-          <Sidebar />
-        </Suspense>
-        <main className="ml-60 min-h-screen p-6">{children}</main>
+        <PrivacyProvider>
+          <Suspense>
+            <Sidebar />
+          </Suspense>
+          <main className="ml-60 min-h-screen p-6">{children}</main>
+        </PrivacyProvider>
       </body>
     </html>
   );

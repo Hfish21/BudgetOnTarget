@@ -13,6 +13,7 @@ import {
   CardAction,
 } from "@/components/ui/card";
 import { getDirectionLabel } from "@/lib/utils";
+import { Money } from "@/components/money";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import type { Target } from "@/types";
 
@@ -141,9 +142,11 @@ export default function TargetsPage() {
               <CardContent>
                 <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                   <span>
-                    {target.target_type === "monetary"
-                      ? target.value_display
-                      : target.value}{" "}
+                    <Money>
+                      {target.target_type === "monetary"
+                        ? target.value_display
+                        : target.value}
+                    </Money>{" "}
                     ({getDirectionLabel(target.direction)})
                   </span>
                   {target.category_name && (
@@ -160,8 +163,7 @@ export default function TargetsPage() {
                   {(target.tolerance_upper > 0 ||
                     target.tolerance_lower > 0) && (
                     <span>
-                      Tolerance: -{target.tolerance_lower_display} / +
-                      {target.tolerance_upper_display}
+                      Tolerance: <Money>-{target.tolerance_lower_display} / +{target.tolerance_upper_display}</Money>
                     </span>
                   )}
                 </div>

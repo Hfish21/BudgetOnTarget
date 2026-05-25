@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   TrendingUp,
   ChevronDown,
+  BarChart3,
 } from "lucide-react";
 import { TargetCard } from "./target-card";
 import {
@@ -15,6 +16,7 @@ import {
   getStatusBorderColor,
   formatCents,
 } from "@/lib/utils";
+import { Money } from "@/components/money";
 import type { TargetAssessment, SpendGroup } from "@/types";
 
 interface GroupSectionProps {
@@ -23,6 +25,7 @@ interface GroupSectionProps {
   assessments: TargetAssessment[];
   defaultExpanded?: boolean;
   onCardClick?: (targetId: number) => void;
+  onHistoryClick?: (groupKey: SpendGroup) => void;
 }
 
 const GROUP_ICONS: Record<SpendGroup, typeof Home> = {
@@ -54,6 +57,7 @@ export function GroupSection({
   assessments,
   defaultExpanded = true,
   onCardClick,
+  onHistoryClick,
 }: GroupSectionProps) {
   const [expanded, setExpanded] = useLocalStorage(
     `ledgerline-group-${groupKey}`,
@@ -112,10 +116,13 @@ export function GroupSection({
         groupKey === "income" && "bg-green-500/5 rounded-r-lg pr-4 py-2"
       )}
     >
-      <button
-        onClick={() => setExpanded(!expanded)}
+      <div
         className="flex w-full items-center justify-between border-b border-border pb-3 transition-colors hover:bg-accent/30 rounded px-2 py-1.5 cursor-pointer"
+        role="button"
+        tabIndex={0}
         aria-expanded={expanded}
+        onClick={() => setExpanded(!expanded)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpanded(!expanded); } }}
       >
         <div className="space-y-2">
           <div className="flex items-center gap-2">
@@ -133,10 +140,10 @@ export function GroupSection({
           <div className="flex items-center gap-4 text-sm">
             <span>
               <span className="font-medium text-foreground">
-                {formatCents(totalActual)}
+                <Money>{formatCents(totalActual)}</Money>
               </span>
               <span className="text-muted-foreground">
-                {" "}/ {formatCents(totalTarget)}
+                {" "}/ <Money>{formatCents(totalTarget)}</Money>
               </span>
             </span>
             <span className="text-muted-foreground">
@@ -166,19 +173,34 @@ export function GroupSection({
           </div>
         </div>
 
-        <div className="text-right">
-          {delta !== 0 ? (
-            <>
-              <p className={cn("text-xl font-bold tabular-nums", deltaColor)}>
-                {formatCents(Math.abs(delta))}
-              </p>
-              <p className="text-xs text-muted-foreground">{deltaLabel}</p>
-            </>
-          ) : (
-            <p className="text-lg font-semibold text-green-400">On Target</p>
-          )}
+        <div className="flex items-center gap-3">
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              onHistoryClick?.(groupKey);
+            }}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); e.preventDefault(); onHistoryClick?.(groupKey); } }}
+            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title={`${groupName} history`}
+          >
+            <BarChart3 className="size-4" />
+          </div>
+          <div className="text-right">
+            {delta !== 0 ? (
+              <>
+                <p className={cn("text-xl font-bold tabular-nums", deltaColor)}>
+                  <Money>{formatCents(Math.abs(delta))}</Money>
+                </p>
+                <p className="text-xs text-muted-foreground">{deltaLabel}</p>
+              </>
+            ) : (
+              <p className="text-lg font-semibold text-green-400">On Target</p>
+            )}
+          </div>
         </div>
-      </button>
+      </div>
 
       <div
         className={cn(

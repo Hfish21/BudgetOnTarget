@@ -14,6 +14,8 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fillCumulativeData, CHART_COLORS, formatCents } from "@/lib/utils";
+import { usePrivacy } from "@/components/privacy-provider";
+import { PrivateYAxisTick } from "@/components/charts/private-axis-tick";
 import type { CumulativeTarget } from "@/types";
 
 interface CumulativeProgressChartProps {
@@ -31,6 +33,7 @@ export function CumulativeProgressChart({
   highlightedTargetId,
   embedded = false,
 }: CumulativeProgressChartProps) {
+  const { privacyMode } = usePrivacy();
   const [visibleTargets, setVisibleTargets] = useState<Set<number>>(
     new Set(targets.map((t) => t.target_id))
   );
@@ -156,13 +159,12 @@ export function CumulativeProgressChart({
             <YAxis
               tickLine={false}
               axisLine={false}
-              fontSize={12}
-              tick={{ fill: "oklch(0.65 0 0)" }}
-              tickFormatter={(value: number) => `$${value}`}
+              tick={<PrivateYAxisTick formatter={(v: number) => `$${v}`} />}
             />
             <Tooltip
               content={({ active, payload, label }) => {
                 if (!active || !payload) return null;
+                const blur = privacyMode ? { filter: "blur(8px)", userSelect: "none" as const } : undefined;
                 return (
                   <div className="rounded-lg border bg-card px-3 py-2 shadow-md">
                     <p className="mb-1 text-xs text-muted-foreground">
@@ -179,7 +181,7 @@ export function CumulativeProgressChart({
                             `target_${t.target_id}` ===
                             String(entry.dataKey)
                         )?.target_name || String(entry.dataKey)}
-                        : {formatCents(Math.round((entry.value as number) * 100))}
+                        : <span style={blur}>{formatCents(Math.round((entry.value as number) * 100))}</span>
                       </p>
                     ))}
                   </div>
@@ -196,10 +198,10 @@ export function CumulativeProgressChart({
                 <ReferenceLine
                   key={`ref-${target.target_id}`}
                   y={target.target_value / 100}
-                  stroke={color}
+                  stroke={privacyMode ? "transparent" : color}
                   strokeDasharray="6 4"
                   strokeWidth={1.5}
-                  label={{
+                  label={privacyMode ? undefined : {
                     value: target.target_display,
                     position: "right",
                     fill: color,

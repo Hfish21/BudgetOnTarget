@@ -13,6 +13,7 @@ import {
   formatCents,
   cn,
 } from "@/lib/utils";
+import { Money } from "@/components/money";
 import { ArrowDown, ArrowUp, Equal } from "lucide-react";
 import type { TargetAssessment } from "@/types";
 
@@ -79,14 +80,14 @@ export function TargetCard({ assessment, onClick }: TargetCardProps) {
       <CardContent className="space-y-3">
         <div className="flex items-baseline justify-between">
           <p className="text-2xl font-bold tracking-tight">
-            {actual_display}{" "}
+            <Money>{actual_display}</Money>{" "}
             <span className="text-sm font-normal text-muted-foreground">
-              / {target_display}
+              / <Money>{target_display}</Money>
             </span>
           </p>
           {delta !== 0 && (
             <span className={cn("text-sm font-semibold tabular-nums", deltaColor)}>
-              {delta > 0 ? "+" : "-"}{formatCents(Math.abs(delta))}
+              <Money>{delta > 0 ? "+" : "-"}{formatCents(Math.abs(delta))}</Money>
             </span>
           )}
         </div>
