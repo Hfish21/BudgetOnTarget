@@ -65,6 +65,10 @@ export const api = {
           targetIds ? `&target_ids=${targetIds.join(",")}` : ""
         }`
       ),
+    getTargetTransactions: (targetId: number, year: number, month: number) =>
+      fetchApi<TransactionListResponse>(
+        `/dashboard/target/${targetId}/transactions?year=${year}&month=${month}`
+      ),
   },
 
   transactions: {

@@ -38,18 +38,25 @@ export function GroupCumulativeChart({
 }: GroupCumulativeChartProps) {
   const [view, setView] = useState<"group" | "target">("group");
   const [visibleGroups, setVisibleGroups] = useState<Set<string>>(
-    new Set(GROUP_ORDER)
+    new Set([...GROUP_ORDER, "total_in", "total_out"])
   );
 
-  const { chartData, groupTotals } = useMemo(() => {
+  const { chartData, groupTotals, hasIncome } = useMemo(() => {
     const daysInMonth = new Date(year, month, 0).getDate();
     const data: Record<string, number | string>[] = [];
     const totals: Record<string, number> = {};
 
     const grouped: Record<string, CumulativeTarget[]> = {};
+    const incomeTargets: CumulativeTarget[] = [];
+    let incomeTotal = 0;
+
     for (const t of targets) {
       const g = t.spend_group;
-      if (g === "income") continue;
+      if (g === "income") {
+        incomeTargets.push(t);
+        incomeTotal += t.target_value;
+        continue;
+      }
       if (!grouped[g]) grouped[g] = [];
       grouped[g].push(t);
       totals[g] = (totals[g] || 0) + t.target_value;
@@ -59,6 +66,7 @@ export function GroupCumulativeChart({
       const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
       const entry: Record<string, number | string> = { date: dateStr, day };
 
+      let totalOut = 0;
       for (const [group, groupTargets] of Object.entries(grouped)) {
         let sum = 0;
         for (const t of groupTargets) {
@@ -67,17 +75,36 @@ export function GroupCumulativeChart({
           sum += point ? point.cumulative_value : 0;
         }
         entry[group] = sum / 100;
+        totalOut += sum;
       }
+      entry["total_out"] = totalOut / 100;
+
+      let totalIn = 0;
+      for (const t of incomeTargets) {
+        const filled = fillCumulativeData(t.data_points, year, month);
+        const point = filled.find((p) => p.date === dateStr);
+        totalIn += point ? point.cumulative_value : 0;
+      }
+      entry["total_in"] = totalIn / 100;
 
       data.push(entry);
     }
 
-    return { chartData: data, groupTotals: totals };
+    if (incomeTotal > 0) totals["total_in"] = incomeTotal;
+
+    return { chartData: data, groupTotals: totals, hasIncome: incomeTargets.length > 0 };
   }, [targets, year, month]);
 
   const activeGroups = GROUP_ORDER.filter(
     (g) => g !== "income" && groupTotals[g] !== undefined
   );
+
+  const allKeys = [...(hasIncome ? ["total_in"] : []), "total_out", ...activeGroups];
+  const allVisible = allKeys.every((k) => visibleGroups.has(k));
+
+  const toggleAll = () => {
+    setVisibleGroups(allVisible ? new Set() : new Set(allKeys));
+  };
 
   const toggleGroup = (group: string) => {
     setVisibleGroups((prev) => {
@@ -145,7 +172,47 @@ export function GroupCumulativeChart({
           />
         ) : (
           <>
-            <div className="mb-4 flex flex-wrap gap-2">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <button
+                onClick={toggleAll}
+                className="rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground"
+              >
+                {allVisible ? "Hide All" : "Show All"}
+              </button>
+              <div className="mx-0.5 h-4 w-px bg-border" />
+              {hasIncome && (
+                <button
+                  onClick={() => toggleGroup("total_in")}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all",
+                    visibleGroups.has("total_in")
+                      ? "border-transparent bg-accent text-foreground"
+                      : "border-border bg-card text-muted-foreground"
+                  )}
+                >
+                  <span
+                    className="inline-block size-2.5 rounded-full"
+                    style={{ backgroundColor: visibleGroups.has("total_in") ? "#22c55e" : "oklch(0.45 0 0)" }}
+                  />
+                  Money In
+                </button>
+              )}
+              <button
+                onClick={() => toggleGroup("total_out")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all",
+                  visibleGroups.has("total_out")
+                    ? "border-transparent bg-accent text-foreground"
+                    : "border-border bg-card text-muted-foreground"
+                )}
+              >
+                <span
+                  className="inline-block size-2.5 rounded-full"
+                  style={{ backgroundColor: visibleGroups.has("total_out") ? "#ef4444" : "oklch(0.45 0 0)" }}
+                />
+                Total Out
+              </button>
+              <div className="mx-1 w-px bg-border" />
               {activeGroups.map((group) => {
                 const color = GROUP_COLORS[group];
                 const isVisible = visibleGroups.has(group);
@@ -206,21 +273,21 @@ export function GroupCumulativeChart({
                           Day {label}
                         </p>
                         {payload.map((entry) => {
-                          const group = String(entry.dataKey);
-                          const target = groupTotals[group] || 0;
+                          const key = String(entry.dataKey);
+                          const target = groupTotals[key] || 0;
                           const val = (entry.value as number) * 100;
-                          const pct =
-                            target > 0
-                              ? Math.round((val / target) * 100)
-                              : 0;
+                          const pct = target > 0 ? Math.round((val / target) * 100) : 0;
+                          const label = key === "total_in" ? "Money In"
+                            : key === "total_out" ? "Total Out"
+                            : getGroupLabel(key);
                           return (
                             <p
-                              key={group}
+                              key={key}
                               className="text-sm font-medium"
                               style={{ color: entry.color }}
                             >
-                              {getGroupLabel(group)}:{" "}
-                              {formatCents(Math.round(val))} ({pct}%)
+                              {label}: {formatCents(Math.round(val))}
+                              {target > 0 ? ` (${pct}%)` : ""}
                             </p>
                           );
                         })}
@@ -229,9 +296,22 @@ export function GroupCumulativeChart({
                   }}
                 />
 
+                {/* Money In reference line */}
+                {hasIncome && visibleGroups.has("total_in") && groupTotals["total_in"] && (
+                  <ReferenceLine
+                    key="ref-total_in"
+                    y={groupTotals["total_in"] / 100}
+                    stroke="#22c55e"
+                    strokeDasharray="8 4"
+                    strokeWidth={1}
+                    label={{ value: `Income $${(groupTotals["total_in"] / 100).toLocaleString()}`, position: "right", fill: "#22c55e", fontSize: 11 }}
+                  />
+                )}
+
                 {activeGroups.map((group) => {
                   if (!visibleGroups.has(group)) return null;
                   const target = groupTotals[group] || 0;
+                  if (target === 0) return null;
                   return (
                     <ReferenceLine
                       key={`ref-${group}`}
@@ -248,6 +328,34 @@ export function GroupCumulativeChart({
                     />
                   );
                 })}
+
+                {/* Money In line */}
+                {hasIncome && visibleGroups.has("total_in") && (
+                  <Line
+                    key="line-total_in"
+                    type="monotone"
+                    dataKey="total_in"
+                    stroke="#22c55e"
+                    strokeWidth={2}
+                    strokeDasharray="6 3"
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                )}
+
+                {/* Total Out line */}
+                {visibleGroups.has("total_out") && (
+                  <Line
+                    key="line-total_out"
+                    type="monotone"
+                    dataKey="total_out"
+                    stroke="#ef4444"
+                    strokeWidth={2}
+                    strokeDasharray="6 3"
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                )}
 
                 {activeGroups.map((group) => {
                   if (!visibleGroups.has(group)) return null;

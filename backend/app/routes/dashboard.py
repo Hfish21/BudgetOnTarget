@@ -3,11 +3,12 @@ from __future__ import annotations
 import calendar
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.target import Target
+from app.schemas.transaction import TransactionListResponse, TransactionResponse
 from app.schemas.dashboard import (
     AssessmentResponse,
     CumulativeDataPoint,
@@ -65,6 +66,8 @@ def get_assessments(
         # Compute percent of target
         if assessment.target_value > 0:
             pct = round(assessment.actual_value / assessment.target_value * 100, 1)
+        elif assessment.actual_value > 0:
+            pct = 100.0
         else:
             pct = 0.0
 
@@ -143,4 +146,38 @@ def get_cumulative(
     return CumulativeResponse(
         period=PeriodInfo(year=year, month=month, label=label),
         targets=cumulative_targets,
+    )
+
+
+@router.get("/target/{target_id}/transactions", response_model=TransactionListResponse)
+def get_target_transactions(
+    target_id: int,
+    year: int = Query(...),
+    month: int = Query(...),
+    db: Session = Depends(get_db),
+) -> TransactionListResponse:
+    """Get transactions matching a target's filters for a given month."""
+    target = db.query(Target).filter(Target.id == target_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Target not found.")
+
+    from app.models.transaction import Transaction
+    from app.routes.transactions import _txn_to_response
+
+    engine = TargetEngine(db)
+    period_start, period_end = get_month_bounds(year, month)
+    query = engine._build_base_query(target, period_start, period_end)
+
+    if target.target_type == "monetary" and target.direction == "at_most":
+        query = query.filter(Transaction.amount_cents < 0)
+    elif target.target_type == "monetary" and target.direction == "at_least":
+        query = query.filter(Transaction.amount_cents > 0)
+
+    transactions = query.order_by(Transaction.date.desc()).all()
+
+    return TransactionListResponse(
+        transactions=[_txn_to_response(t) for t in transactions],
+        total_count=len(transactions),
+        limit=len(transactions),
+        offset=0,
     )

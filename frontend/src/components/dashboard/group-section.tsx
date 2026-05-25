@@ -13,7 +13,6 @@ import {
   cn,
   getStatusBgColor,
   getStatusBorderColor,
-  deriveGroupStatus,
   formatCents,
 } from "@/lib/utils";
 import type { TargetAssessment, SpendGroup } from "@/types";
@@ -61,12 +60,26 @@ export function GroupSection({
     defaultExpanded
   );
 
-  const groupStatus = deriveGroupStatus(assessments.map((a) => a.status));
   const Icon = GROUP_ICONS[groupKey];
 
   const totalActual = assessments.reduce((sum, a) => sum + a.actual_value, 0);
   const totalTarget = assessments.reduce((sum, a) => sum + a.target_value, 0);
-  const pct = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 1000) / 10 : 0;
+  const totalToleranceUpper = assessments.reduce((sum, a) => sum + a.tolerance_upper, 0);
+  const totalToleranceLower = assessments.reduce((sum, a) => sum + a.tolerance_lower, 0);
+  const pct = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 1000) / 10 : (totalActual > 0 ? 100 : 0);
+
+  const groupStatus = (() => {
+    const isSpendingGroup = groupKey !== "income";
+    if (isSpendingGroup) {
+      if (totalActual <= totalTarget) return "on_target" as const;
+      if (totalActual <= totalTarget + totalToleranceUpper) return "in_tolerance" as const;
+      return "off_target" as const;
+    } else {
+      if (totalActual >= totalTarget) return "on_target" as const;
+      if (totalActual >= totalTarget - totalToleranceLower) return "in_tolerance" as const;
+      return "off_target" as const;
+    }
+  })();
 
   const onTargetCount = assessments.filter((a) => a.status === "on_target").length;
   const inToleranceCount = assessments.filter((a) => a.status === "in_tolerance").length;

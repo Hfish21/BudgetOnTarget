@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { Card } from "@/components/ui/card";
-import { formatCents, getStatusBgColor, deriveGroupStatus } from "@/lib/utils";
+import { formatCents, getStatusBgColor } from "@/lib/utils";
 import type { TargetAssessment } from "@/types";
 
 interface NetSummaryProps {
@@ -14,30 +14,35 @@ export function NetSummary({ assessments }: NetSummaryProps) {
     useMemo(() => {
       let inVal = 0;
       let inTarget = 0;
+      let inTolLower = 0;
       let outVal = 0;
       let outTarget = 0;
-      const incomeStatuses: string[] = [];
-      const spendStatuses: string[] = [];
+      let outTolUpper = 0;
 
       for (const a of assessments) {
         if (a.spend_group === "income") {
           inVal += a.actual_value;
           inTarget += a.target_value;
-          incomeStatuses.push(a.status);
+          inTolLower += a.tolerance_lower;
         } else {
           outVal += a.actual_value;
           outTarget += a.target_value;
-          spendStatuses.push(a.status);
+          outTolUpper += a.tolerance_upper;
         }
       }
+
+      const incStat = inVal >= inTarget ? "on_target"
+        : inVal >= inTarget - inTolLower ? "in_tolerance" : "off_target";
+      const spendStat = outVal <= outTarget ? "on_target"
+        : outVal <= outTarget + outTolUpper ? "in_tolerance" : "off_target";
 
       return {
         moneyIn: inVal,
         moneyInTarget: inTarget,
         moneyOut: outVal,
         moneyOutTarget: outTarget,
-        incomeStatus: deriveGroupStatus(incomeStatuses),
-        spendStatus: deriveGroupStatus(spendStatuses),
+        incomeStatus: incStat,
+        spendStatus: spendStat,
       };
     }, [assessments]);
 

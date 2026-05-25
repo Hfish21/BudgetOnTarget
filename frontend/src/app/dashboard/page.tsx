@@ -7,6 +7,7 @@ import { GROUP_ORDER, getGroupLabel } from "@/lib/utils";
 import { NetSummary } from "@/components/dashboard/net-summary";
 import { GroupSection } from "@/components/dashboard/group-section";
 import { GroupCumulativeChart } from "@/components/charts/group-cumulative-chart";
+import { TargetTransactionsDialog } from "@/components/dashboard/target-transactions-dialog";
 import type {
   DashboardResponse,
   CumulativeResponse,
@@ -26,6 +27,7 @@ function DashboardContent() {
   const [highlightedTarget, setHighlightedTarget] = useState<number | null>(
     null
   );
+  const [selectedAssessment, setSelectedAssessment] = useState<TargetAssessment | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
   const fetchDashboard = useCallback(async (y: number, m: number) => {
@@ -54,7 +56,8 @@ function DashboardContent() {
 
   const handleCardClick = (targetId: number) => {
     setHighlightedTarget(targetId);
-    chartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const found = assessments.find((a) => a.target_id === targetId) || null;
+    setSelectedAssessment(found);
   };
 
   if (!year || !month) {
@@ -142,6 +145,14 @@ function DashboardContent() {
           />
         ))}
       </div>
+
+      <TargetTransactionsDialog
+        assessment={selectedAssessment}
+        year={parseInt(year, 10)}
+        month={parseInt(month, 10)}
+        open={selectedAssessment !== null}
+        onOpenChange={(open) => { if (!open) setSelectedAssessment(null); }}
+      />
     </div>
   );
 }

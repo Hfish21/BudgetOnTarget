@@ -64,6 +64,13 @@ export function CumulativeProgressChart({
     return data;
   }, [targets, year, month]);
 
+  const allTargetIds = targets.map((t) => t.target_id);
+  const allVisible = allTargetIds.every((id) => visibleTargets.has(id));
+
+  const toggleAll = () => {
+    setVisibleTargets(allVisible ? new Set() : new Set(allTargetIds));
+  };
+
   const toggleTarget = (targetId: number) => {
     setVisibleTargets((prev) => {
       const next = new Set(prev);
@@ -100,7 +107,14 @@ export function CumulativeProgressChart({
 
   const chartContent = (
     <>
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+          <button
+            onClick={toggleAll}
+            className="rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground"
+          >
+            {allVisible ? "Hide All" : "Show All"}
+          </button>
+          <div className="mx-0.5 h-4 w-px bg-border" />
           {targets.map((target, index) => {
             const color = CHART_COLORS[index % CHART_COLORS.length];
             const isVisible = visibleTargets.has(target.target_id);
