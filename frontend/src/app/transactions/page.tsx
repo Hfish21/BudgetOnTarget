@@ -62,9 +62,15 @@ function TransactionsContent() {
       household_member_id?: number;
       search?: string;
       is_uncategorized?: boolean;
+      lane?: string;
     }) => {
       setOffset(0);
-      setFilters(newFilters as Record<string, string | number | boolean | undefined>);
+      const apiFilters: Record<string, string | number | boolean | undefined> = {
+        ...newFilters,
+        spend_group: newFilters.lane,
+      };
+      delete apiFilters.lane;
+      setFilters(apiFilters);
     },
     []
   );
