@@ -17,8 +17,15 @@ from app.models import (  # noqa: F401
     Transaction,
 )
 
+import os
+
 # Alembic Config object
 config = context.config
+
+# Override sqlalchemy.url from environment if set
+env_url = os.environ.get("LEDGERLINE_DATABASE_URL")
+if env_url:
+    config.set_main_option("sqlalchemy.url", env_url)
 
 # Interpret the config file for Python logging
 if config.config_file_name is not None:

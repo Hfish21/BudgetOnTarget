@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+ledgerline.db
+ledgerline.db-shm
+ledgerline.db-wal
+test_ledgerline.db
+.env

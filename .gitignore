@@ -42,5 +42,11 @@ out/
 htmlcov/
 .pytest_cache/
 
+# Ruff
+.ruff_cache/
+
 # Build artifacts
 *.log
+
+# Temp audit files
+uncategorized-audit.*
