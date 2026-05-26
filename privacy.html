@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - BudgetOnTarget</title>
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --border: #262626;
+      --text: #fafafa;
+      --muted: #a1a1aa;
+      --green: #10B981;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--green); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .container { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 20px 0;
+    }
+    header a {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+    header img { width: 32px; height: 32px; }
+
+    .content {
+      padding: 60px 0;
+    }
+    .content h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .updated {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 40px;
+    }
+    .content h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-top: 32px;
+      margin-bottom: 12px;
+    }
+    .content p, .content ul {
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .content ul {
+      padding-left: 24px;
+    }
+    .content li {
+      margin-bottom: 8px;
+    }
+    .callout {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin: 32px 0;
+    }
+    .callout p { color: var(--text); margin-bottom: 0; }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 0;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 640px) {
+      .content h1 { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <a href="/"><img src="logo.svg" alt="BudgetOnTarget">BudgetOnTarget</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="content">
+      <h1>Privacy Policy</h1>
+      <p class="updated">Last updated: May 25, 2026</p>
+
+      <div class="callout">
+        <p>BudgetOnTarget is a self-hosted application. Your financial data never leaves your machine. There is no cloud, no telemetry, no analytics, and no third-party data sharing.</p>
+      </div>
+
+      <h2>Data You Provide</h2>
+      <p>When you use BudgetOnTarget, you import bank CSV files containing transaction data. This data is stored locally in a SQLite database on your machine. It is never transmitted to any external server, API, or third party.</p>
+
+      <h2>What We Don't Collect</h2>
+      <ul>
+        <li>No personal information</li>
+        <li>No usage analytics or telemetry</li>
+        <li>No cookies or tracking</li>
+        <li>No account creation or authentication</li>
+        <li>No cloud storage or sync</li>
+      </ul>
+
+      <h2>This Landing Page</h2>
+      <p>This website (budgetontarget.com) is a static page hosted on GitHub Pages. GitHub may collect standard server logs (IP address, browser type, referring page) as described in <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub's Privacy Statement</a>. We do not add any additional tracking, analytics, or cookies to this page.</p>
+
+      <h2>Open Source</h2>
+      <p>BudgetOnTarget is open source under the MIT License. You can inspect every line of code to verify these claims at <a href="https://github.com/Hfish21/BudgetOnTarget">github.com/Hfish21/BudgetOnTarget</a>.</p>
+
+      <h2>Contact</h2>
+      <p>If you have questions about this privacy policy, open an issue on the <a href="https://github.com/Hfish21/BudgetOnTarget/issues">GitHub repository</a>.</p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p><a href="/">&larr; Back to home</a> &middot; MIT License &middot; Built by <a href="https://github.com/Hfish21">Hayden Salmon</a></p>
+    </div>
+  </footer>
+</body>
+</html>
