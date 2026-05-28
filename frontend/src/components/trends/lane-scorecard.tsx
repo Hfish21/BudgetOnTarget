@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Home,
   ShoppingBag,
@@ -9,6 +10,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendIndicator, type Trend } from "./trend-indicator";
 import { InfoTip } from "./info-tip";
+import { DeltaBreakdownDialog } from "./delta-breakdown-dialog";
 import {
   cn,
   getStatusBgColor,
@@ -17,6 +19,7 @@ import {
 } from "@/lib/utils";
 import { Money } from "@/components/money";
 import type { LaneHistoryMonth, SpendGroup } from "@/types";
+import type { TargetWithHistory } from "@/app/trends/page";
 
 const GROUP_ICONS: Record<SpendGroup, typeof Home> = {
   income: TrendingUp,
@@ -36,6 +39,7 @@ interface LaneScorecardProps {
   lane: SpendGroup;
   label: string;
   months: LaneHistoryMonth[];
+  targets: TargetWithHistory[];
   selected?: boolean;
   dimmed?: boolean;
   onClick?: () => void;
@@ -58,7 +62,8 @@ function computeTrend(months: LaneHistoryMonth[]): Trend {
   return "stable";
 }
 
-export function LaneScorecard({ lane, label, months, selected, dimmed, onClick }: LaneScorecardProps) {
+export function LaneScorecard({ lane, label, months, targets, selected, dimmed, onClick }: LaneScorecardProps) {
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
   const Icon = GROUP_ICONS[lane];
 
   const onTarget = months.filter((m) => m.status === "on_target").length;
@@ -124,17 +129,28 @@ export function LaneScorecard({ lane, label, months, selected, dimmed, onClick }
 
         <div>
           <div className="flex items-center gap-1.5">
-            <p className={cn("text-lg font-bold tabular-nums", deltaColor)}>
+            <button
+              type="button"
+              className={cn(
+                "text-lg font-bold tabular-nums rounded px-1 -mx-1 transition-colors hover:bg-foreground/10 cursor-pointer",
+                deltaColor
+              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                setBreakdownOpen(true);
+              }}
+              title="Click for category breakdown"
+            >
               <Money>
                 {avgDelta > 0 ? "+" : avgDelta < 0 ? "-" : ""}
                 {formatCents(Math.abs(avgDelta))}
               </Money>
-            </p>
+            </button>
             <InfoTip
               text={
                 isSpending
-                  ? `On average, ${label} spending was ${formatCents(Math.abs(avgDelta))}/mo ${avgDelta > 0 ? "over" : "under"} target. ${deltaIsGood ? "Under budget is good." : "Over budget — this lane is consistently exceeding its target."}`
-                  : `On average, income was ${formatCents(Math.abs(avgDelta))}/mo ${avgDelta > 0 ? "above" : "below"} target. ${deltaIsGood ? "Above target is good." : "Below target — income is coming in short."}`
+                  ? `On average, ${label} spending was ${formatCents(Math.abs(avgDelta))}/mo ${avgDelta > 0 ? "over" : "under"} target. Click the amount for a category breakdown.`
+                  : `On average, income was ${formatCents(Math.abs(avgDelta))}/mo ${avgDelta > 0 ? "above" : "below"} target. Click the amount for a category breakdown.`
               }
             />
           </div>
@@ -154,6 +170,13 @@ export function LaneScorecard({ lane, label, months, selected, dimmed, onClick }
           />
         </div>
       </CardContent>
+
+      <DeltaBreakdownDialog
+        lane={lane}
+        targets={targets}
+        open={breakdownOpen}
+        onOpenChange={setBreakdownOpen}
+      />
     </Card>
   );
 }
