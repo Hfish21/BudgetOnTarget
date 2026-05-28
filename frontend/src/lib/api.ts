@@ -55,7 +55,7 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export const api = {
+export const remoteApi = {
   dashboard: {
     getAssessments: (year: number, month: number) =>
       fetchApi<DashboardResponse>(
@@ -249,4 +249,43 @@ export const api = {
         body: JSON.stringify(body),
       }),
   },
+
+  budgetFile: {
+    export: async (): Promise<Blob> => {
+      const res = await fetch(`${API_BASE}/budget-file/export`);
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new ApiError(res.status, error.detail || res.statusText);
+      }
+      return res.blob();
+    },
+    import: (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      return fetch(`${API_BASE}/budget-file/import`, {
+        method: "POST",
+        body: formData,
+      }).then(async (res) => {
+        if (!res.ok) {
+          const error = await res.json().catch(() => ({ detail: res.statusText }));
+          throw new ApiError(res.status, error.detail || res.statusText);
+        }
+        return res.json() as Promise<{ status: string; imported: Record<string, number> }>;
+      });
+    },
+  },
 };
+
+export type ApiShape = typeof remoteApi;
+
+let _activeApi: ApiShape = remoteApi;
+
+export function setActiveApi(api: ApiShape): void {
+  _activeApi = api;
+}
+
+export const api: ApiShape = new Proxy({} as ApiShape, {
+  get(_target, prop) {
+    return (_activeApi as Record<string, unknown>)[prop as string];
+  },
+});

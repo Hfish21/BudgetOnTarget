@@ -3,12 +3,14 @@
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useStorage } from "@/components/storage-provider";
 import type { MonthInfo } from "@/types";
 
 export function useMonth() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const { dataVersion } = useStorage();
   const [months, setMonths] = useState<MonthInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,6 +19,7 @@ export function useMonth() {
   const monthParam = searchParams.get("month");
 
   useEffect(() => {
+    setLoading(true);
     api.transactions
       .getMonths()
       .then((data) => {
@@ -27,7 +30,7 @@ export function useMonth() {
         setError(err.message || "Failed to load months");
         setLoading(false);
       });
-  }, []);
+  }, [dataVersion]);
 
   // If no month selected in URL and we have months data, default to the most recent
   useEffect(() => {
