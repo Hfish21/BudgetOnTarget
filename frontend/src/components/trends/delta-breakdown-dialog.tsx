@@ -76,7 +76,7 @@ export function DeltaBreakdownDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>{label} — Delta Breakdown</DialogTitle>
           <DialogDescription>
@@ -103,7 +103,7 @@ export function DeltaBreakdownDialog({
             </p>
           ) : (
             <div className="py-2">
-              <ResponsiveContainer width="100%" height={280}>
+              <ResponsiveContainer width="100%" height={350}>
                 <PieChart>
                   <Pie
                     data={slices}
@@ -111,8 +111,8 @@ export function DeltaBreakdownDialog({
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    outerRadius={100}
-                    innerRadius={50}
+                    outerRadius={130}
+                    innerRadius={65}
                     paddingAngle={2}
                     label={({ name, payload }) => {
                       const delta = (payload as SliceData).avgDelta;
