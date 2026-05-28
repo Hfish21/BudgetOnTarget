@@ -55,7 +55,7 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export const api = {
+export const remoteApi = {
   dashboard: {
     getAssessments: (year: number, month: number) =>
       fetchApi<DashboardResponse>(
@@ -275,3 +275,17 @@ export const api = {
     },
   },
 };
+
+export type ApiShape = typeof remoteApi;
+
+let _activeApi: ApiShape = remoteApi;
+
+export function setActiveApi(api: ApiShape): void {
+  _activeApi = api;
+}
+
+export const api: ApiShape = new Proxy({} as ApiShape, {
+  get(_target, prop) {
+    return (_activeApi as Record<string, unknown>)[prop as string];
+  },
+});
