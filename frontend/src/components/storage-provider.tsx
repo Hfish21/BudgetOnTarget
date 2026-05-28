@@ -25,6 +25,7 @@ interface StorageContextValue {
   setMode: (m: StorageMode) => void;
   dirty: boolean;
   fileLoaded: boolean;
+  dataVersion: number;
   openFile: () => Promise<void>;
   saveFile: () => Promise<void>;
   newFile: () => void;
@@ -42,7 +43,7 @@ export function StorageProvider({ children }: { children: ReactNode }) {
   const [mode, setModeRaw] = useState<StorageMode>("local");
   const [dirty, setDirty] = useState(false);
   const [fileLoaded, setFileLoaded] = useState(false);
-  const [, forceRender] = useState(0);
+  const [dataVersion, setDataVersion] = useState(0);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const store = getStore();
@@ -63,7 +64,7 @@ export function StorageProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsub = store.subscribe(() => {
       setDirty(store.dirty);
-      forceRender((n) => n + 1);
+      setDataVersion((n) => n + 1);
 
       if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
       autoSaveTimer.current = setTimeout(() => {
@@ -119,6 +120,7 @@ export function StorageProvider({ children }: { children: ReactNode }) {
         setMode,
         dirty,
         fileLoaded,
+        dataVersion,
         openFile,
         saveFile,
         newFile,
