@@ -5,6 +5,7 @@ import { CategoryList } from "@/components/settings/category-list";
 import { RuleList } from "@/components/settings/rule-list";
 import { MemberList } from "@/components/settings/member-list";
 import { AccountList } from "@/components/settings/account-list";
+import { Tag, ListFilter, Users, CreditCard } from "lucide-react";
 
 export default function SettingsPage() {
   return (
@@ -12,31 +13,43 @@ export default function SettingsPage() {
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
         <p className="text-sm text-muted-foreground">
-          Manage categories, rules, household members, and accounts.
+          Manage how transactions are categorized, tracked, and organized.
         </p>
       </div>
 
-      <Tabs defaultValue="categories">
-        <TabsList>
-          <TabsTrigger value="categories">Categories</TabsTrigger>
-          <TabsTrigger value="rules">Rules</TabsTrigger>
-          <TabsTrigger value="members">Members</TabsTrigger>
-          <TabsTrigger value="accounts">Accounts</TabsTrigger>
+      <Tabs defaultValue="categories" className="flex flex-col">
+        <TabsList variant="line" className="border-b border-border pb-0">
+          <TabsTrigger value="categories" className="gap-1.5 px-3">
+            <Tag className="size-3.5" />
+            Categories
+          </TabsTrigger>
+          <TabsTrigger value="rules" className="gap-1.5 px-3">
+            <ListFilter className="size-3.5" />
+            Rules
+          </TabsTrigger>
+          <TabsTrigger value="members" className="gap-1.5 px-3">
+            <Users className="size-3.5" />
+            Members
+          </TabsTrigger>
+          <TabsTrigger value="accounts" className="gap-1.5 px-3">
+            <CreditCard className="size-3.5" />
+            Accounts
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="categories" className="mt-4">
+        <TabsContent value="categories" className="mt-6">
           <CategoryList />
         </TabsContent>
 
-        <TabsContent value="rules" className="mt-4">
+        <TabsContent value="rules" className="mt-6">
           <RuleList />
         </TabsContent>
 
-        <TabsContent value="members" className="mt-4">
+        <TabsContent value="members" className="mt-6">
           <MemberList />
         </TabsContent>
 
-        <TabsContent value="accounts" className="mt-4">
+        <TabsContent value="accounts" className="mt-6">
           <AccountList />
         </TabsContent>
       </Tabs>
