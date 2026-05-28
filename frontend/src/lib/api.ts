@@ -249,4 +249,29 @@ export const api = {
         body: JSON.stringify(body),
       }),
   },
+
+  budgetFile: {
+    export: async (): Promise<Blob> => {
+      const res = await fetch(`${API_BASE}/budget-file/export`);
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new ApiError(res.status, error.detail || res.statusText);
+      }
+      return res.blob();
+    },
+    import: (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      return fetch(`${API_BASE}/budget-file/import`, {
+        method: "POST",
+        body: formData,
+      }).then(async (res) => {
+        if (!res.ok) {
+          const error = await res.json().catch(() => ({ detail: res.statusText }));
+          throw new ApiError(res.status, error.detail || res.statusText);
+        }
+        return res.json() as Promise<{ status: string; imported: Record<string, number> }>;
+      });
+    },
+  },
 };

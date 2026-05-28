@@ -5,7 +5,8 @@ import { CategoryList } from "@/components/settings/category-list";
 import { RuleList } from "@/components/settings/rule-list";
 import { MemberList } from "@/components/settings/member-list";
 import { AccountList } from "@/components/settings/account-list";
-import { Tag, ListFilter, Users, CreditCard } from "lucide-react";
+import { DataPortability } from "@/components/settings/data-portability";
+import { Tag, ListFilter, Users, CreditCard, HardDrive } from "lucide-react";
 
 export default function SettingsPage() {
   return (
@@ -35,6 +36,10 @@ export default function SettingsPage() {
             <CreditCard className="size-3.5" />
             Accounts
           </TabsTrigger>
+          <TabsTrigger value="data" className="gap-1.5 px-3">
+            <HardDrive className="size-3.5" />
+            Data
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="categories" className="mt-6">
@@ -51,6 +56,10 @@ export default function SettingsPage() {
 
         <TabsContent value="accounts" className="mt-6">
           <AccountList />
+        </TabsContent>
+
+        <TabsContent value="data" className="mt-6">
+          <DataPortability />
         </TabsContent>
       </Tabs>
     </div>

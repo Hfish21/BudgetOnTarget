@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routes import (
     accounts,
+    budget_file,
     categories,
     category_rules,
     dashboard,
@@ -39,6 +40,7 @@ app.include_router(imports.router, prefix=settings.api_prefix)
 app.include_router(dashboard.router, prefix=settings.api_prefix)
 app.include_router(household_members.router, prefix=settings.api_prefix)
 app.include_router(accounts.router, prefix=settings.api_prefix)
+app.include_router(budget_file.router, prefix=settings.api_prefix)
 
 
 @app.get("/health")
