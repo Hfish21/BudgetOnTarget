@@ -47,16 +47,28 @@ export default function TrendsPage() {
       setAllData(data);
 
       const activeTargets = targets.filter((t: Target) => t.is_active);
-      const histories = await Promise.all(
-        activeTargets.map((t: Target) => api.dashboard.getTargetHistory(t.id))
-      );
+      const BATCH_SIZE = 5;
+      const results: PromiseSettledResult<ReturnType<typeof api.dashboard.getTargetHistory> extends Promise<infer U> ? U : never>[] = [];
+      for (let i = 0; i < activeTargets.length; i += BATCH_SIZE) {
+        const batch = activeTargets.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.allSettled(
+          batch.map((t: Target) => api.dashboard.getTargetHistory(t.id))
+        );
+        results.push(...batchResults);
+      }
       setTargetData(
-        activeTargets.map((t: Target, i: number) => ({
-          id: t.id,
-          name: t.name,
-          spendGroup: t.spend_group,
-          months: histories[i].months,
-        }))
+        activeTargets
+          .map((t: Target, i: number) => {
+            const r = results[i];
+            if (r.status !== "fulfilled") return null;
+            return {
+              id: t.id,
+              name: t.name,
+              spendGroup: t.spend_group,
+              months: r.value.months,
+            };
+          })
+          .filter((t): t is TargetWithHistory => t !== null)
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load trend data");
@@ -141,6 +153,7 @@ export default function TrendsPage() {
         <>
           <LaneScorecardGrid
             data={filteredData}
+            targetData={filteredTargetData}
             selectedLane={selectedLane}
             onLaneClick={(lane) =>
               setSelectedLane(selectedLane === lane ? null : lane)

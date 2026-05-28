@@ -67,9 +67,9 @@ export const api = {
           targetIds ? `&target_ids=${targetIds.join(",")}` : ""
         }`
       ),
-    getTargetTransactions: (targetId: number, year: number, month: number) =>
+    getTargetTransactions: (targetId: number, year: number, month: number, endYear?: number, endMonth?: number) =>
       fetchApi<TransactionListResponse>(
-        `/dashboard/target/${targetId}/transactions?year=${year}&month=${month}`
+        `/dashboard/target/${targetId}/transactions?year=${year}&month=${month}${endYear != null && endMonth != null ? `&end_year=${endYear}&end_month=${endMonth}` : ""}`
       ),
     getTargetHistory: (targetId: number) =>
       fetchApi<TargetHistoryResponse>(

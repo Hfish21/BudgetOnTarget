@@ -273,9 +273,11 @@ def get_target_transactions(
     target_id: int,
     year: int = Query(...),
     month: int = Query(...),
+    end_year: int | None = Query(None),
+    end_month: int | None = Query(None),
     db: Session = Depends(get_db),
 ) -> TransactionListResponse:
-    """Get transactions matching a target's filters for a given month."""
+    """Get transactions matching a target's filters for a month or date range."""
     target = db.query(Target).filter(Target.id == target_id).first()
     if not target:
         raise HTTPException(status_code=404, detail="Target not found.")
@@ -284,7 +286,11 @@ def get_target_transactions(
     from app.routes.transactions import _txn_to_response
 
     engine = TargetEngine(db)
-    period_start, period_end = get_month_bounds(year, month)
+    period_start, _ = get_month_bounds(year, month)
+    if end_year is not None and end_month is not None:
+        _, period_end = get_month_bounds(end_year, end_month)
+    else:
+        _, period_end = get_month_bounds(year, month)
     query = engine._build_base_query(target, period_start, period_end)
 
     if target.target_type == "monetary" and target.direction == "at_most":
