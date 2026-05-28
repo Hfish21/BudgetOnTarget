@@ -1,19 +1,19 @@
 const CACHE_VERSION = "bot-v1";
-const PRECACHE_URLS = [
-  "/",
-  "/dashboard",
-  "/transactions",
-  "/import",
-  "/targets",
-  "/settings",
-  "/trends",
-  "/logo.svg",
-  "/manifest.webmanifest",
-];
 
 self.addEventListener("install", (event) => {
+  const base = self.location.pathname.replace(/\/sw\.js$/, "");
+  const precacheUrls = [
+    `${base}/`,
+    `${base}/dashboard`,
+    `${base}/transactions`,
+    `${base}/import`,
+    `${base}/targets`,
+    `${base}/settings`,
+    `${base}/trends`,
+    `${base}/logo.svg`,
+  ];
   event.waitUntil(
-    caches.open(CACHE_VERSION).then((cache) => cache.addAll(PRECACHE_URLS))
+    caches.open(CACHE_VERSION).then((cache) => cache.addAll(precacheUrls))
   );
   self.skipWaiting();
 });
@@ -55,7 +55,7 @@ self.addEventListener("fetch", (event) => {
         const url = new URL(request.url);
         const shouldCache =
           request.destination === "document" ||
-          url.pathname.startsWith("/_next/static/") ||
+          url.pathname.includes("/_next/static/") ||
           url.pathname.endsWith(".svg") ||
           url.pathname.endsWith(".png") ||
           url.pathname.endsWith(".ico") ||
@@ -69,7 +69,8 @@ self.addEventListener("fetch", (event) => {
         return response;
       }).catch(() => {
         if (request.destination === "document") {
-          return caches.match("/dashboard");
+          const base = self.location.pathname.replace(/\/sw\.js$/, "");
+          return caches.match(`${base}/dashboard`);
         }
         return new Response("Offline", { status: 503 });
       });
