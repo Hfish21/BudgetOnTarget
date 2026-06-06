@@ -134,6 +134,7 @@ export async function importCsv(
       usaa_category: pt.usaa_category,
       is_internal_transfer: transfer,
       is_manually_categorized: false,
+      is_excluded: false,
       csv_import_id: csvImport.id,
       tag_ids: [],
     });

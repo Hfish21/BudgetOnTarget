@@ -47,6 +47,7 @@ function txnToResponse(txn: {
   category_id: number | null;
   is_manually_categorized: boolean;
   is_internal_transfer: boolean;
+  is_excluded: boolean;
   usaa_category: string | null;
 }): TransactionResponse {
   const account = store.accountById(txn.account_id);
@@ -72,6 +73,7 @@ function txnToResponse(txn: {
     category_name: category?.name ?? null,
     is_manually_categorized: txn.is_manually_categorized,
     is_internal_transfer: txn.is_internal_transfer,
+    is_excluded: txn.is_excluded,
     usaa_category: txn.usaa_category,
   };
 }
@@ -211,7 +213,11 @@ export const localApi = {
     list: async (
       params: Record<string, string | number | boolean | undefined>
     ): Promise<TransactionListResponse> => {
-      let txns = [...store.transactions];
+      const showExcluded =
+        params.show_excluded === true || params.show_excluded === "true";
+      let txns = store.transactions.filter(
+        (t) => showExcluded || !t.is_excluded
+      );
 
       const year = params.year != null ? Number(params.year) : undefined;
       const month = params.month != null ? Number(params.month) : undefined;
@@ -338,6 +344,12 @@ export const localApi = {
         rule_id: ruleId,
         retroactive_count: retroactiveCount,
       };
+    },
+
+    exclude: async (id: number, excluded: boolean): Promise<void> => {
+      const txn = store.transactions.find((t) => t.id === id);
+      if (!txn) throw new Error("Transaction not found");
+      store.updateTransaction(id, { is_excluded: excluded });
     },
   },
 

@@ -69,6 +69,7 @@ export interface BudgetTransaction {
   usaa_category: string | null;
   is_internal_transfer: boolean;
   is_manually_categorized: boolean;
+  is_excluded: boolean;
   csv_import_id: number | null;
   tag_ids: number[];
   created_at: string;

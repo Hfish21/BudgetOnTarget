@@ -112,6 +112,12 @@ export const remoteApi = {
         method: "PATCH",
         body: JSON.stringify(body),
       }),
+
+    exclude: (id: number, excluded: boolean) =>
+      fetchApi<void>(`/transactions/${id}/exclude`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_excluded: excluded }),
+      }),
   },
 
   categories: {

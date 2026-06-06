@@ -63,6 +63,7 @@ function TransactionsContent() {
       search?: string;
       is_uncategorized?: boolean;
       lane?: string;
+      show_excluded?: boolean;
     }) => {
       setOffset(0);
       const apiFilters: Record<string, string | number | boolean | undefined> = {
@@ -83,9 +84,16 @@ function TransactionsContent() {
         });
         fetchTransactions(offset, filters);
       } catch {
-        // Failed to categorize - we still re-fetch to show current state
         fetchTransactions(offset, filters);
       }
+    },
+    [offset, filters, fetchTransactions]
+  );
+
+  const handleExclude = useCallback(
+    async (transactionId: number, excluded: boolean) => {
+      await api.transactions.exclude(transactionId, excluded);
+      fetchTransactions(offset, filters);
     },
     [offset, filters, fetchTransactions]
   );
@@ -148,6 +156,7 @@ function TransactionsContent() {
           <TransactionTable
             transactions={transactions}
             onCategorize={handleCategorize}
+            onExclude={handleExclude}
           />
 
           {totalPages > 1 && (

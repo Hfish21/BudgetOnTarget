@@ -70,7 +70,10 @@ export class BudgetStore {
     this.categories = [...file.categories];
     this.categoryRules = [...file.category_rules];
     this.targets = [...file.targets];
-    this.transactions = [...file.transactions];
+    this.transactions = file.transactions.map((t) => ({
+      ...t,
+      is_excluded: t.is_excluded ?? false,
+    }));
     this.csvImports = [...file.csv_imports];
     this.tags = [...file.tags];
     this._dirty = false;

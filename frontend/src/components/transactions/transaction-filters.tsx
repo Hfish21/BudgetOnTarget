@@ -20,6 +20,7 @@ interface TransactionFiltersProps {
     search?: string;
     is_uncategorized?: boolean;
     lane?: SpendGroup;
+    show_excluded?: boolean;
   }) => void;
   initialFilters?: {
     category_id?: number;
@@ -47,6 +48,7 @@ export function TransactionFilters({
     initialFilters.is_uncategorized || false
   );
   const [lane, setLane] = useState<SpendGroup | undefined>(undefined);
+  const [showExcluded, setShowExcluded] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -82,10 +84,11 @@ export function TransactionFilters({
         search: search || undefined,
         is_uncategorized: uncategorizedOnly || undefined,
         lane,
+        show_excluded: showExcluded || undefined,
       });
     }, 300);
     return () => clearTimeout(timeout);
-  }, [search, categoryId, memberId, uncategorizedOnly, lane, onFilterChange]);
+  }, [search, categoryId, memberId, uncategorizedOnly, lane, showExcluded, onFilterChange]);
 
   const handleClear = useCallback(() => {
     setCategoryId(undefined);
@@ -93,12 +96,13 @@ export function TransactionFilters({
     setSearch("");
     setUncategorizedOnly(false);
     setLane(undefined);
+    setShowExcluded(false);
   }, []);
 
   const selectClass =
     "h-8 rounded-lg border border-input bg-card px-3 pr-8 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring";
 
-  const hasFilters = categoryId || memberId || search || uncategorizedOnly || lane;
+  const hasFilters = categoryId || memberId || search || uncategorizedOnly || lane || showExcluded;
 
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -163,6 +167,14 @@ export function TransactionFilters({
         onClick={() => setUncategorizedOnly(!uncategorizedOnly)}
       >
         Uncategorized Only
+      </Button>
+
+      <Button
+        variant={showExcluded ? "default" : "outline"}
+        size="sm"
+        onClick={() => setShowExcluded(!showExcluded)}
+      >
+        Show Excluded
       </Button>
 
       {hasFilters && (

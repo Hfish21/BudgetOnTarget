@@ -47,7 +47,8 @@ function buildBaseFilter(
     (t) =>
       t.date >= periodStart &&
       t.date <= periodEnd &&
-      !t.is_internal_transfer
+      !t.is_internal_transfer &&
+      !t.is_excluded
   );
 
   if (target.category_id != null) {

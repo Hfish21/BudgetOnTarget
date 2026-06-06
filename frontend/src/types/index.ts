@@ -13,6 +13,7 @@ export interface Transaction {
   category_name: string | null;
   is_manually_categorized: boolean;
   is_internal_transfer: boolean;
+  is_excluded: boolean;
   usaa_category: string | null;
 }
 
