@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.csv_import import CsvImport
+from app.models.transaction import Transaction
 from app.schemas.csv_import import CsvImportResponse, ImportResultResponse
 from app.services.importer import ImportService
 
@@ -73,3 +74,24 @@ def list_imports(db: Session = Depends(get_db)) -> list[CsvImportResponse]:
             )
         )
     return result
+
+
+@router.delete("/{import_id}")
+def delete_import(import_id: int, db: Session = Depends(get_db)) -> dict[str, int]:
+    """Delete an import and every transaction that came in with it.
+
+    Undoes a bad import (e.g. a CSV uploaded to the wrong account) without
+    touching any other transactions or configuration.
+    """
+    imp = db.query(CsvImport).filter(CsvImport.id == import_id).first()
+    if imp is None:
+        raise HTTPException(status_code=404, detail="Import not found")
+
+    deleted = (
+        db.query(Transaction)
+        .filter(Transaction.csv_import_id == import_id)
+        .delete(synchronize_session=False)
+    )
+    db.delete(imp)
+    db.commit()
+    return {"deleted_transactions": deleted}

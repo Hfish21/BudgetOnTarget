@@ -41,7 +41,11 @@ export default function ImportPage() {
 
       <section>
         <h3 className="mb-4 text-lg font-semibold">Import History</h3>
-        <ImportHistory imports={imports} loading={loading} />
+        <ImportHistory
+          imports={imports}
+          loading={loading}
+          onDeleted={fetchImports}
+        />
       </section>
     </div>
   );

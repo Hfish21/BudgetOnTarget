@@ -307,6 +307,21 @@ export class BudgetStore {
     return imp;
   }
 
+  deleteCsvImport(
+    id: number
+  ): { deletedTransactions: number } | null {
+    const idx = this.csvImports.findIndex((i) => i.id === id);
+    if (idx === -1) return null;
+    const before = this.transactions.length;
+    this.transactions = this.transactions.filter(
+      (t) => t.csv_import_id !== id
+    );
+    const deletedTransactions = before - this.transactions.length;
+    this.csvImports.splice(idx, 1);
+    this._notify();
+    return { deletedTransactions };
+  }
+
   hasFileHash(hash: string): boolean {
     return this.csvImports.some((i) => i.file_hash === hash);
   }

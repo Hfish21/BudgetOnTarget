@@ -232,6 +232,10 @@ export const remoteApi = {
       });
     },
     list: () => fetchApi<ImportRecord[]>("/imports"),
+    delete: (id: number) =>
+      fetchApi<{ deleted_transactions: number }>(`/imports/${id}`, {
+        method: "DELETE",
+      }),
   },
 
   accounts: {

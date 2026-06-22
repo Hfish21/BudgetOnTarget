@@ -616,6 +616,12 @@ export const localApi = {
             new Date(a.imported_at).getTime()
         );
     },
+
+    delete: async (id: number): Promise<{ deleted_transactions: number }> => {
+      const result = store.deleteCsvImport(id);
+      if (!result) throw new Error("Import not found");
+      return { deleted_transactions: result.deletedTransactions };
+    },
   },
 
   accounts: {
