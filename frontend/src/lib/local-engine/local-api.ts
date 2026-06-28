@@ -303,11 +303,16 @@ export const localApi = {
         rule_match_type?: string;
       }
     ) => {
-      const txn = store.transactions.find((t) => t.id === id);
-      if (!txn) throw new Error("Transaction not found");
+      const existing = store.transactions.find((t) => t.id === id);
+      if (!existing) throw new Error("Transaction not found");
 
-      txn.category_id = body.category_id;
-      txn.is_manually_categorized = true;
+      // Route through updateTransaction so the store notifies subscribers —
+      // this bumps dataVersion (UI reactivity) and triggers the debounced
+      // auto-save, so the change persists across reloads/navigation.
+      const txn = store.updateTransaction(id, {
+        category_id: body.category_id,
+        is_manually_categorized: true,
+      })!;
 
       let ruleCreated = false;
       let ruleId: number | null = null;
@@ -334,7 +339,7 @@ export const localApi = {
           if (other.id === id) continue;
           const catId = categorize(other.description, store.categoryRules);
           if (catId != null) {
-            other.category_id = catId;
+            store.updateTransaction(other.id, { category_id: catId });
             retroactiveCount++;
           }
         }
