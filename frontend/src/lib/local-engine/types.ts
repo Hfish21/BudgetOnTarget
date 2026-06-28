@@ -70,6 +70,7 @@ export interface BudgetTransaction {
   is_internal_transfer: boolean;
   is_manually_categorized: boolean;
   is_excluded: boolean;
+  is_pending: boolean;
   csv_import_id: number | null;
   tag_ids: number[];
   created_at: string;

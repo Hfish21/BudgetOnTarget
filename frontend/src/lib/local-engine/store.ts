@@ -73,6 +73,7 @@ export class BudgetStore {
     this.transactions = file.transactions.map((t) => ({
       ...t,
       is_excluded: t.is_excluded ?? false,
+      is_pending: t.is_pending ?? false,
     }));
     this.csvImports = [...file.csv_imports];
     this.tags = [...file.tags];
@@ -320,6 +321,20 @@ export class BudgetStore {
     this.csvImports.splice(idx, 1);
     this._notify();
     return { deletedTransactions };
+  }
+
+  // Pending transactions are a volatile overlay: every import for an account
+  // wipes the account's existing pending rows before re-inserting the current
+  // ones, so a pending charge that later posts (with a changed amount/date/
+  // description) is never double-counted.
+  deletePendingForAccount(accountId: number): number {
+    const before = this.transactions.length;
+    this.transactions = this.transactions.filter(
+      (t) => !(t.is_pending && t.account_id === accountId)
+    );
+    const removed = before - this.transactions.length;
+    if (removed > 0) this._notify();
+    return removed;
   }
 
   hasFileHash(hash: string): boolean {

@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Suspense } from "react";
-import { Sidebar } from "@/components/layout/sidebar";
 import { PrivacyProvider } from "@/components/privacy-provider";
+import { AppShell } from "@/components/layout/app-shell";
 import { StorageProvider } from "@/components/storage-provider";
 import { ServiceWorkerRegister } from "@/components/sw-register";
 import "./globals.css";
@@ -48,10 +47,7 @@ export default function RootLayout({
         <ServiceWorkerRegister />
         <StorageProvider>
           <PrivacyProvider>
-            <Suspense>
-              <Sidebar />
-            </Suspense>
-            <main className="ml-60 min-h-screen p-6">{children}</main>
+            <AppShell>{children}</AppShell>
           </PrivacyProvider>
         </StorageProvider>
       </body>

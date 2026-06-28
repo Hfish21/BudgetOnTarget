@@ -18,10 +18,12 @@ export function CsvUpload({ onUploadComplete }: CsvUploadProps) {
   );
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [includePending, setIncludePending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{
     new_transactions: number;
     duplicate_transactions: number;
+    pending_transactions: number;
     categorized_count: number;
     uncategorized_count: number;
     total_rows: number;
@@ -70,7 +72,11 @@ export function CsvUpload({ onUploadComplete }: CsvUploadProps) {
     setError(null);
 
     try {
-      const uploadResult = await api.imports.upload(file, selectedAccountId);
+      const uploadResult = await api.imports.upload(
+        file,
+        selectedAccountId,
+        includePending
+      );
       setResult(uploadResult);
       setFile(null);
       onUploadComplete();
@@ -160,6 +166,23 @@ export function CsvUpload({ onUploadComplete }: CsvUploadProps) {
         )}
       </div>
 
+      {/* Include pending toggle */}
+      <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-card p-3">
+        <input
+          type="checkbox"
+          checked={includePending}
+          onChange={(e) => setIncludePending(e.target.checked)}
+          className="mt-0.5 size-4 accent-primary"
+        />
+        <span className="text-sm">
+          <span className="font-medium">Include pending transactions</span>
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            Provisional charges that haven&apos;t posted yet. They count toward
+            your budget and are replaced automatically on your next import.
+          </span>
+        </span>
+      </label>
+
       {/* Upload button */}
       <Button
         onClick={handleUpload}
@@ -200,6 +223,14 @@ export function CsvUpload({ onUploadComplete }: CsvUploadProps) {
                   {result.duplicate_transactions}
                 </p>
               </div>
+              {result.pending_transactions > 0 && (
+                <div>
+                  <p className="text-muted-foreground">Pending Included</p>
+                  <p className="font-medium text-sky-400">
+                    {result.pending_transactions}
+                  </p>
+                </div>
+              )}
               <div>
                 <p className="text-muted-foreground">Auto-categorized</p>
                 <p className="font-medium">

@@ -14,6 +14,7 @@ export interface Transaction {
   is_manually_categorized: boolean;
   is_internal_transfer: boolean;
   is_excluded: boolean;
+  is_pending: boolean;
   usaa_category: string | null;
 }
 
@@ -158,6 +159,7 @@ export interface ImportResult {
   total_rows: number;
   new_transactions: number;
   duplicate_transactions: number;
+  pending_transactions: number;
   categorized_count: number;
   uncategorized_count: number;
   errors: string[];
