@@ -6,17 +6,18 @@ export interface ParsedTransaction {
   description: string;
   amount_cents: number;
   usaa_category: string | null;
+  is_pending: boolean;
 }
 
-function cleanDescription(raw: string): string {
+export function cleanDescription(raw: string): string {
   return raw.trim().replace(/\s+/g, " ").toUpperCase();
 }
 
-function dollarsToCents(amountStr: string): number {
+export function dollarsToCents(amountStr: string): number {
   return Math.round(parseFloat(amountStr) * 100);
 }
 
-function parseCsvRows(text: string): Record<string, string>[] {
+export function parseCsvRows(text: string): Record<string, string>[] {
   const lines = text.split(/\r?\n/);
   if (lines.length < 2) return [];
 
@@ -37,7 +38,7 @@ function parseCsvRows(text: string): Record<string, string>[] {
   return rows;
 }
 
-function parseCSVLine(line: string): string[] {
+export function parseCSVLine(line: string): string[] {
   const result: string[] = [];
   let current = "";
   let inQuotes = false;
@@ -72,14 +73,16 @@ function parseCSVLine(line: string): string[] {
 
 export function parseUsaaCsv(
   fileContent: string,
-  accountType: AccountType
+  accountType: AccountType,
+  includePending = false
 ): ParsedTransaction[] {
   const rows = parseCsvRows(fileContent);
   const transactions: ParsedTransaction[] = [];
 
   for (const row of rows) {
     const status = row["Status"] ?? "";
-    if (status === "Pending") continue;
+    const isPending = status === "Pending";
+    if (isPending && !includePending) continue;
 
     const dateStr = (row["Date"] ?? "").trim();
     if (!dateStr) continue;
@@ -107,6 +110,7 @@ export function parseUsaaCsv(
       description,
       amount_cents: amountCents,
       usaa_category: usaaCategory,
+      is_pending: isPending,
     });
   }
 

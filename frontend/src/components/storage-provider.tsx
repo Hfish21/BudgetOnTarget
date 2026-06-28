@@ -24,11 +24,13 @@ interface StorageContextValue {
   mode: StorageMode;
   setMode: (m: StorageMode) => void;
   dirty: boolean;
+  loading: boolean;
   fileLoaded: boolean;
   dataVersion: number;
   openFile: () => Promise<void>;
   saveFile: () => Promise<void>;
   newFile: () => void;
+  completeSetup: () => void;
 }
 
 const StorageContext = createContext<StorageContextValue | null>(null);
@@ -42,6 +44,7 @@ export function useStorage() {
 export function StorageProvider({ children }: { children: ReactNode }) {
   const [mode, setModeRaw] = useState<StorageMode>("local");
   const [dirty, setDirty] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [fileLoaded, setFileLoaded] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -76,13 +79,17 @@ export function StorageProvider({ children }: { children: ReactNode }) {
 
   // Try loading from IndexedDB on mount
   useEffect(() => {
-    loadAutoSave().then((data) => {
-      if (data && data.transactions?.length > 0) {
-        store.load(data);
-        store.markClean();
-        setFileLoaded(true);
-      }
-    });
+    loadAutoSave()
+      .then((data) => {
+        if (data && data.transactions?.length > 0) {
+          store.load(data);
+          store.markClean();
+          setFileLoaded(true);
+        }
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [store]);
 
   const openFile = useCallback(async () => {
@@ -113,17 +120,24 @@ export function StorageProvider({ children }: { children: ReactNode }) {
     setActiveApi(localApi);
   }, [store]);
 
+  const completeSetup = useCallback(() => {
+    setFileLoaded(true);
+    autoSave(store.serialize()).catch(() => {});
+  }, [store]);
+
   return (
     <StorageContext.Provider
       value={{
         mode,
         setMode,
         dirty,
+        loading,
         fileLoaded,
         dataVersion,
         openFile,
         saveFile,
         newFile,
+        completeSetup,
       }}
     >
       {children}

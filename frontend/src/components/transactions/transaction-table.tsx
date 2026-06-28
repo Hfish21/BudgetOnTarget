@@ -161,7 +161,17 @@ export function TransactionTable({
                       tx.is_excluded && "line-through"
                     )}
                   >
-                    {tx.description}
+                    <span className="flex items-center gap-2">
+                      <span className="truncate">{tx.description}</span>
+                      {tx.is_pending && (
+                        <Badge
+                          variant="outline"
+                          className="shrink-0 border-sky-500/30 bg-sky-500/15 text-[10px] text-sky-400"
+                        >
+                          Pending
+                        </Badge>
+                      )}
+                    </span>
                   </TableCell>
                   <TableCell
                     className={cn(

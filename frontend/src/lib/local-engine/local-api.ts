@@ -48,6 +48,7 @@ function txnToResponse(txn: {
   is_manually_categorized: boolean;
   is_internal_transfer: boolean;
   is_excluded: boolean;
+  is_pending: boolean;
   usaa_category: string | null;
 }): TransactionResponse {
   const account = store.accountById(txn.account_id);
@@ -74,6 +75,7 @@ function txnToResponse(txn: {
     is_manually_categorized: txn.is_manually_categorized,
     is_internal_transfer: txn.is_internal_transfer,
     is_excluded: txn.is_excluded,
+    is_pending: txn.is_pending,
     usaa_category: txn.usaa_category,
   };
 }
@@ -593,9 +595,13 @@ export const localApi = {
   },
 
   imports: {
-    upload: async (file: File, accountId: number): Promise<ImportResult> => {
+    upload: async (
+      file: File,
+      accountId: number,
+      includePending = false
+    ): Promise<ImportResult> => {
       const buffer = await file.arrayBuffer();
-      return importCsv(store, buffer, file.name, accountId);
+      return importCsv(store, buffer, file.name, accountId, includePending);
     },
 
     list: async (): Promise<ImportRecord[]> => {

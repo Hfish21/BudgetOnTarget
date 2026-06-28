@@ -214,10 +214,11 @@ export const remoteApi = {
   },
 
   imports: {
-    upload: (file: File, accountId: number) => {
+    upload: (file: File, accountId: number, includePending = false) => {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("account_id", String(accountId));
+      formData.append("include_pending", String(includePending));
       return fetch(`${API_BASE}/imports/upload`, {
         method: "POST",
         body: formData,
