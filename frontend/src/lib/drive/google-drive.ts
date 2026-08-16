@@ -265,7 +265,11 @@ const DRIVE_FILES = "https://www.googleapis.com/drive/v3/files";
 const DRIVE_UPLOAD = "https://www.googleapis.com/upload/drive/v3/files";
 const META_FIELDS = "id,name,modifiedTime";
 
-async function driveMeta(token: string, fileId: string): Promise<DriveFileRef> {
+/** Fetch just the id/name/modifiedTime of a Drive file (for conflict checks). */
+export async function driveMeta(
+  token: string,
+  fileId: string,
+): Promise<DriveFileRef> {
   const res = await fetch(
     `${DRIVE_FILES}/${fileId}?fields=${encodeURIComponent(META_FIELDS)}`,
     { headers: { Authorization: `Bearer ${token}` } },

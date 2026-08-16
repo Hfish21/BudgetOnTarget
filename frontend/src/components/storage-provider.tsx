@@ -14,15 +14,23 @@ import {
   autoSave,
   loadAutoSave,
   loadDriveRef,
-  openBudgetFile,
-  saveBudgetFile,
+  loadLocalHandle,
+  loadLocation,
+  openLocalFile,
+  pickAndSaveLocal,
   saveDriveRef,
+  saveLocalHandle,
+  saveLocation,
+  saveToLocalHandle,
+  type StorageLocation,
+  type WritableFileHandle,
 } from "@/lib/local-engine/file-io";
 import {
   DriveCancelledError,
   DriveConflictError,
   clearAccessToken,
   downloadBudget,
+  driveMeta,
   getAccessToken,
   openFromDrive as driveOpen,
   saveToDrive as driveSave,
@@ -34,19 +42,30 @@ interface StorageContextValue {
   loading: boolean;
   fileLoaded: boolean;
   dataVersion: number;
-  openFile: () => Promise<void>;
-  saveFile: () => Promise<void>;
-  newFile: () => void;
-  completeSetup: () => void;
-  // --- Google Drive ---
-  driveRef: DriveFileRef | null;
-  driveBusy: boolean;
-  driveStatus: string | null;
+  /** Where the canonical file currently lives. */
+  location: StorageLocation;
+  storageBusy: boolean;
+  storageStatus: string | null;
+  /** Set when a save is blocked because the Drive copy changed first. */
   driveConflict: DriveFileRef | null;
+  /** Set when a background check finds a newer Drive copy on another device. */
+  remoteUpdate: DriveFileRef | null;
+
+  // open / save
+  openFromLocal: () => Promise<void>;
   openFromDrive: () => Promise<void>;
+  saveToLocal: () => Promise<void>;
   saveToDrive: (force?: boolean) => Promise<void>;
-  disconnectDrive: () => void;
+  /** Quick-save to the current canonical location; opens nothing if none set. */
+  save: () => Promise<void>;
+  newFile: () => void;
+  forgetLocation: () => void;
+  completeSetup: () => void;
+
+  // conflict / sync resolution
   dismissConflict: () => void;
+  applyRemoteUpdate: () => Promise<void>;
+  dismissRemoteUpdate: () => void;
 }
 
 const StorageContext = createContext<StorageContextValue | null>(null);
@@ -57,10 +76,7 @@ export function useStorage() {
   return ctx;
 }
 
-/** Default name for a budget saved to Drive for the first time. */
-function defaultDriveName(): string {
-  return `budget-${new Date().toISOString().slice(0, 10)}.budget`;
-}
+const NO_LOCATION: StorageLocation = { kind: "none" };
 
 export function StorageProvider({ children }: { children: ReactNode }) {
   const [dirty, setDirty] = useState(false);
@@ -69,16 +85,25 @@ export function StorageProvider({ children }: { children: ReactNode }) {
   const [dataVersion, setDataVersion] = useState(0);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [location, setLocation] = useState<StorageLocation>(NO_LOCATION);
   const [driveRef, setDriveRef] = useState<DriveFileRef | null>(null);
-  const [driveBusy, setDriveBusy] = useState(false);
-  const [driveStatus, setDriveStatus] = useState<string | null>(null);
+  const [storageBusy, setStorageBusy] = useState(false);
+  const [storageStatus, setStorageStatus] = useState<string | null>(null);
   const [driveConflict, setDriveConflict] = useState<DriveFileRef | null>(null);
+  const [remoteUpdate, setRemoteUpdate] = useState<DriveFileRef | null>(null);
+
+  // In-memory local handle (also persisted to IndexedDB for cross-reload reuse).
+  const localHandle = useRef<WritableFileHandle | null>(null);
+  // Latest dirty flag for use inside event listeners without re-subscribing.
+  const dirtyRef = useRef(false);
+  const lastRemoteCheck = useRef(0);
 
   const store = getStore();
 
   useEffect(() => {
     const unsub = store.subscribe(() => {
       setDirty(store.dirty);
+      dirtyRef.current = store.dirty;
       setDataVersion((n) => n + 1);
 
       if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
@@ -89,143 +114,285 @@ export function StorageProvider({ children }: { children: ReactNode }) {
     return unsub;
   }, [store]);
 
-  // Try loading from IndexedDB on mount (content + any Drive linkage)
+  // Restore content + storage linkage from IndexedDB on mount.
   useEffect(() => {
-    Promise.all([loadAutoSave(), loadDriveRef()])
-      .then(([data, ref]) => {
+    Promise.all([
+      loadAutoSave(),
+      loadDriveRef(),
+      loadLocalHandle(),
+      loadLocation(),
+    ])
+      .then(([data, ref, handle, loc]) => {
         if (data && data.transactions?.length > 0) {
           store.load(data);
           store.markClean();
           setFileLoaded(true);
         }
         if (ref) setDriveRef(ref);
+        if (handle) localHandle.current = handle;
+        if (loc) setLocation(loc);
       })
-      .finally(() => {
-        setLoading(false);
-      });
+      .finally(() => setLoading(false));
   }, [store]);
 
-  const openFile = useCallback(async () => {
-    const data = await openBudgetFile();
-    if (data) {
-      store.load(data);
-      store.markClean();
-      setDirty(false);
-      setFileLoaded(true);
-    }
-  }, [store]);
-
-  const saveFile = useCallback(async () => {
-    const data = store.serialize();
-    await saveBudgetFile(data);
+  const markSaved = useCallback(() => {
     store.markClean();
     setDirty(false);
+    dirtyRef.current = false;
   }, [store]);
+
+  // --- Open ------------------------------------------------------------------
+
+  const openFromLocal = useCallback(async () => {
+    setStorageBusy(true);
+    setStorageStatus(null);
+    try {
+      const res = await openLocalFile();
+      if (!res) return;
+      store.load(res.data);
+      markSaved();
+      setFileLoaded(true);
+      localHandle.current = res.handle;
+      setDriveRef(null);
+      setRemoteUpdate(null);
+      const loc: StorageLocation = { kind: "local", name: res.name };
+      setLocation(loc);
+      await Promise.all([
+        saveLocalHandle(res.handle),
+        saveDriveRef(null),
+        saveLocation(loc),
+      ]);
+      setStorageStatus(`Opened ${res.name} from this device`);
+    } catch (e) {
+      setStorageStatus(`Couldn't open file: ${(e as Error).message}`);
+    } finally {
+      setStorageBusy(false);
+    }
+  }, [store, markSaved]);
+
+  const openFromDrive = useCallback(async () => {
+    setStorageBusy(true);
+    setStorageStatus(null);
+    try {
+      const { data, ref } = await driveOpen();
+      store.load(data);
+      markSaved();
+      setFileLoaded(true);
+      setDriveRef(ref);
+      localHandle.current = null;
+      setRemoteUpdate(null);
+      const loc: StorageLocation = { kind: "drive", name: ref.name };
+      setLocation(loc);
+      await Promise.all([
+        saveDriveRef(ref),
+        saveLocalHandle(null),
+        saveLocation(loc),
+      ]);
+      setStorageStatus(`Opened ${ref.name} from Google Drive`);
+    } catch (e) {
+      if (e instanceof DriveCancelledError) setStorageStatus(null);
+      else setStorageStatus(`Couldn't open from Drive: ${(e as Error).message}`);
+    } finally {
+      setStorageBusy(false);
+    }
+  }, [store, markSaved]);
+
+  // --- Save ------------------------------------------------------------------
+
+  const saveToLocal = useCallback(async () => {
+    setStorageBusy(true);
+    setStorageStatus(null);
+    try {
+      const data = store.serialize();
+      const currentName =
+        location.kind === "local" ? location.name : undefined;
+
+      // Write back to the existing handle when we have one; otherwise pick.
+      if (localHandle.current) {
+        const ok = await saveToLocalHandle(localHandle.current, data);
+        if (ok) {
+          markSaved();
+          const loc: StorageLocation = {
+            kind: "local",
+            name: currentName ?? localHandle.current.name,
+          };
+          setLocation(loc);
+          await saveLocation(loc);
+          setStorageStatus(`Saved to this device · ${loc.name}`);
+          return;
+        }
+      }
+
+      const res = await pickAndSaveLocal(data, currentName);
+      if (!res) return; // cancelled
+      localHandle.current = res.handle;
+      setDriveRef(null);
+      const loc: StorageLocation = { kind: "local", name: res.name };
+      setLocation(loc);
+      markSaved();
+      await Promise.all([
+        saveLocalHandle(res.handle),
+        saveDriveRef(null),
+        saveLocation(loc),
+      ]);
+      setStorageStatus(
+        res.handle
+          ? `Saved to this device · ${res.name}`
+          : `Downloaded ${res.name}`,
+      );
+    } catch (e) {
+      setStorageStatus(`Couldn't save file: ${(e as Error).message}`);
+    } finally {
+      setStorageBusy(false);
+    }
+  }, [store, location, markSaved]);
+
+  const saveToDrive = useCallback(
+    async (force = false) => {
+      setStorageBusy(true);
+      setStorageStatus(null);
+      try {
+        const data = store.serialize();
+        const name = driveRef?.name ?? "budget.budget";
+        const ref = await driveSave(data, driveRef, name, { force });
+        setDriveRef(ref);
+        localHandle.current = null;
+        setDriveConflict(null);
+        setRemoteUpdate(null);
+        const loc: StorageLocation = { kind: "drive", name: ref.name };
+        setLocation(loc);
+        markSaved();
+        await Promise.all([
+          saveDriveRef(ref),
+          saveLocalHandle(null),
+          saveLocation(loc),
+        ]);
+        setStorageStatus(`Saved to Google Drive · ${ref.name}`);
+      } catch (e) {
+        if (e instanceof DriveConflictError) {
+          setDriveConflict(e.remote);
+          setStorageStatus(null);
+        } else if (e instanceof DriveCancelledError) {
+          setStorageStatus(null);
+        } else {
+          setStorageStatus(`Couldn't save to Drive: ${(e as Error).message}`);
+        }
+      } finally {
+        setStorageBusy(false);
+      }
+    },
+    [store, driveRef, markSaved],
+  );
+
+  const save = useCallback(async () => {
+    if (location.kind === "drive") return saveToDrive();
+    if (location.kind === "local") return saveToLocal();
+    // No canonical location yet — the UI surfaces the destination chooser.
+  }, [location, saveToDrive, saveToLocal]);
 
   const newFile = useCallback(() => {
     store.clear();
-    store.markClean();
-    setDirty(false);
+    markSaved();
     setFileLoaded(true);
-    // A fresh budget is no longer tied to the previously opened Drive file.
+    localHandle.current = null;
     setDriveRef(null);
-    saveDriveRef(null).catch(() => {});
-  }, [store]);
+    setRemoteUpdate(null);
+    setLocation(NO_LOCATION);
+    Promise.all([
+      saveLocalHandle(null),
+      saveDriveRef(null),
+      saveLocation(NO_LOCATION),
+    ]).catch(() => {});
+  }, [store, markSaved]);
+
+  const forgetLocation = useCallback(() => {
+    clearAccessToken();
+    localHandle.current = null;
+    setDriveRef(null);
+    setRemoteUpdate(null);
+    setDriveConflict(null);
+    setLocation(NO_LOCATION);
+    setStorageStatus("Unlinked from this file");
+    Promise.all([
+      saveLocalHandle(null),
+      saveDriveRef(null),
+      saveLocation(NO_LOCATION),
+    ]).catch(() => {});
+  }, []);
 
   const completeSetup = useCallback(() => {
     setFileLoaded(true);
     autoSave(store.serialize()).catch(() => {});
   }, [store]);
 
-  // --- Google Drive flows ---------------------------------------------------
+  // --- Conflict / multi-device sync -----------------------------------------
 
-  const openFromDrive = useCallback(async () => {
-    setDriveBusy(true);
-    setDriveStatus(null);
-    try {
-      const { data, ref } = await driveOpen();
-      store.load(data);
-      store.markClean();
-      setDirty(false);
-      setFileLoaded(true);
-      setDriveRef(ref);
-      await saveDriveRef(ref);
-      setDriveStatus(`Opened “${ref.name}” from Drive`);
-    } catch (e) {
-      if (e instanceof DriveCancelledError) {
-        setDriveStatus(null);
-      } else {
-        setDriveStatus(
-          `Couldn't open from Drive: ${(e as Error).message ?? "unknown error"}`,
-        );
-      }
-    } finally {
-      setDriveBusy(false);
-    }
-  }, [store]);
+  const dismissConflict = useCallback(() => setDriveConflict(null), []);
 
-  const saveToDrive = useCallback(
-    async (force = false) => {
-      setDriveBusy(true);
-      setDriveStatus(null);
-      try {
-        const data = store.serialize();
-        const name = driveRef?.name ?? defaultDriveName();
-        const ref = await driveSave(data, driveRef, name, { force });
-        setDriveRef(ref);
-        await saveDriveRef(ref);
-        store.markClean();
-        setDirty(false);
-        setDriveConflict(null);
-        setDriveStatus(`Saved to Drive · ${ref.name}`);
-      } catch (e) {
-        if (e instanceof DriveConflictError) {
-          setDriveConflict(e.remote);
-          setDriveStatus(null);
-        } else if (e instanceof DriveCancelledError) {
-          setDriveStatus(null);
-        } else {
-          setDriveStatus(
-            `Couldn't save to Drive: ${(e as Error).message ?? "unknown error"}`,
-          );
-        }
-      } finally {
-        setDriveBusy(false);
-      }
-    },
-    [store, driveRef],
-  );
-
-  const disconnectDrive = useCallback(() => {
-    clearAccessToken();
-    setDriveRef(null);
-    setDriveConflict(null);
-    setDriveStatus("Disconnected from Google Drive");
-    saveDriveRef(null).catch(() => {});
-  }, []);
-
-  const dismissConflict = useCallback(async () => {
-    // "Reload theirs": pull the current Drive copy, discarding local changes.
-    if (!driveConflict) return;
-    setDriveBusy(true);
+  const applyRemoteUpdate = useCallback(async () => {
+    const target = remoteUpdate ?? driveConflict ?? driveRef;
+    if (!target) return;
+    setStorageBusy(true);
     try {
       const token = await getAccessToken(true);
-      const data = await downloadBudget(token, driveConflict.fileId);
+      const data = await downloadBudget(token, target.fileId);
       store.load(data);
-      store.markClean();
-      setDirty(false);
-      setDriveRef(driveConflict);
-      await saveDriveRef(driveConflict);
-      setDriveStatus(`Reloaded the Drive copy of “${driveConflict.name}”`);
+      markSaved();
+      setDriveRef(target);
+      setRemoteUpdate(null);
       setDriveConflict(null);
+      await saveDriveRef(target);
+      setStorageStatus(`Refreshed to the latest from Drive · ${target.name}`);
     } catch (e) {
-      setDriveStatus(
-        `Couldn't reload from Drive: ${(e as Error).message ?? "unknown error"}`,
-      );
+      setStorageStatus(`Couldn't refresh from Drive: ${(e as Error).message}`);
     } finally {
-      setDriveBusy(false);
+      setStorageBusy(false);
     }
-  }, [store, driveConflict]);
+  }, [store, remoteUpdate, driveConflict, driveRef, markSaved]);
+
+  const dismissRemoteUpdate = useCallback(() => setRemoteUpdate(null), []);
+
+  // Background check: when a Drive-backed tab regains focus, see if another
+  // device pushed a newer version. If we have no unsaved edits, refresh
+  // silently; if we do, surface a banner so we never clobber their changes.
+  useEffect(() => {
+    if (location.kind !== "drive" || !driveRef) return;
+
+    const check = async () => {
+      const now = Date.now();
+      if (now - lastRemoteCheck.current < 8000) return; // throttle
+      lastRemoteCheck.current = now;
+      try {
+        const token = await getAccessToken(false); // silent; no popup
+        const meta = await driveMeta(token, driveRef.fileId);
+        if (meta.modifiedTime === driveRef.modifiedTime) return;
+        if (dirtyRef.current) {
+          setRemoteUpdate(meta); // let the user decide
+        } else {
+          const data = await downloadBudget(token, driveRef.fileId);
+          store.load(data);
+          markSaved();
+          setDriveRef(meta);
+          await saveDriveRef(meta);
+          setStorageStatus(`Refreshed to the latest from Drive · ${meta.name}`);
+        }
+      } catch {
+        // silent token unavailable / offline — skip quietly
+      }
+    };
+
+    const onFocus = () => void check();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void check();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    void check(); // also check right after linking
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [location.kind, driveRef, store, markSaved]);
 
   return (
     <StorageContext.Provider
@@ -234,18 +401,22 @@ export function StorageProvider({ children }: { children: ReactNode }) {
         loading,
         fileLoaded,
         dataVersion,
-        openFile,
-        saveFile,
-        newFile,
-        completeSetup,
-        driveRef,
-        driveBusy,
-        driveStatus,
+        location,
+        storageBusy,
+        storageStatus,
         driveConflict,
+        remoteUpdate,
+        openFromLocal,
         openFromDrive,
+        saveToLocal,
         saveToDrive,
-        disconnectDrive,
+        save,
+        newFile,
+        forgetLocation,
+        completeSetup,
         dismissConflict,
+        applyRemoteUpdate,
+        dismissRemoteUpdate,
       }}
     >
       {children}
