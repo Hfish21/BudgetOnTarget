@@ -45,12 +45,30 @@ export class DriveCancelledError extends Error {
   }
 }
 
+/**
+ * Thrown when Google's sign-in popup fails to open (typically blocked by the
+ * browser). Distinct from a user cancel so the UI can show a helpful hint
+ * instead of silently doing nothing — the failure mode that made "Open from
+ * Drive" appear to do nothing on mobile.
+ */
+export class DriveAuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DriveAuthError";
+  }
+}
+
 // --- Minimal typings for the Google globals we touch -------------------------
 
 interface TokenResponse {
   access_token?: string;
   expires_in?: number;
   error?: string;
+}
+/** GIS error_callback payload (popup blocked/closed, etc.). */
+interface GisError {
+  type?: string;
+  message?: string;
 }
 interface TokenClient {
   requestAccessToken: (opts?: { prompt?: string }) => void;
@@ -63,6 +81,7 @@ interface GoogleGlobal {
         client_id: string;
         scope: string;
         callback: (resp: TokenResponse) => void;
+        error_callback?: (err: GisError) => void;
       }) => TokenClient;
     };
   };
@@ -128,15 +147,69 @@ let tokenClient: TokenClient | null = null;
 let accessToken: string | null = null;
 let tokenExpiry = 0; // epoch ms
 
+// The in-flight token request's resolve/reject. Kept at module scope so the
+// token client's single callback / error_callback (wired once at init) can
+// settle it. Only one request is ever in flight at a time.
+let pendingResolve: ((token: string) => void) | null = null;
+let pendingReject: ((err: Error) => void) | null = null;
+
+function settleReject(err: Error) {
+  const reject = pendingReject;
+  pendingResolve = null;
+  pendingReject = null;
+  reject?.(err);
+}
+
 async function ensureTokenClient(): Promise<TokenClient> {
   if (tokenClient) return tokenClient;
   await loadScript(GIS_SRC);
   tokenClient = getGoogle().accounts.oauth2.initTokenClient({
     client_id: GOOGLE_CLIENT_ID,
     scope: DRIVE_SCOPE,
-    callback: () => {}, // set per-request in getAccessToken
+    callback: (resp: TokenResponse) => {
+      if (resp.error || !resp.access_token) {
+        settleReject(new DriveCancelledError());
+        return;
+      }
+      accessToken = resp.access_token;
+      tokenExpiry = Date.now() + (resp.expires_in ?? 3600) * 1000;
+      const resolve = pendingResolve;
+      pendingResolve = null;
+      pendingReject = null;
+      resolve?.(accessToken);
+    },
+    // Fires when the popup can't open (blocked) or the user dismisses it. A
+    // dismiss is a cancel; anything else is a real, surfaceable failure.
+    error_callback: (err: GisError) => {
+      if (err?.type === "popup_closed") {
+        settleReject(new DriveCancelledError());
+      } else {
+        settleReject(
+          new DriveAuthError(
+            "Google sign-in couldn't open. If your browser blocked a popup, allow popups for this site and try again.",
+          ),
+        );
+      }
+    },
   });
   return tokenClient;
+}
+
+/**
+ * Warm up the Google scripts ahead of a user action. Calling this the moment
+ * the user shows storage intent (opening the menu drawer or the Open/Save
+ * dropdown) means that by the time they tap "Google Drive", the token client
+ * is already initialised — so `requestAccessToken` runs synchronously inside
+ * the tap and the sign-in popup is NOT blocked. Without this, the first Drive
+ * action awaits a script load, which drops the user-gesture on mobile browsers
+ * and the popup is silently blocked. Best-effort; the lazy path still works.
+ */
+export async function preloadDriveScripts(): Promise<void> {
+  try {
+    await ensureTokenClient();
+  } catch {
+    // ignore — getAccessToken will retry the load on demand
+  }
 }
 
 /**
@@ -150,15 +223,8 @@ export async function getAccessToken(interactive = true): Promise<string> {
 
   const client = await ensureTokenClient();
   return new Promise<string>((resolve, reject) => {
-    client.callback = (resp: TokenResponse) => {
-      if (resp.error || !resp.access_token) {
-        reject(new DriveCancelledError());
-        return;
-      }
-      accessToken = resp.access_token;
-      tokenExpiry = Date.now() + (resp.expires_in ?? 3600) * 1000;
-      resolve(accessToken);
-    };
+    pendingResolve = resolve;
+    pendingReject = reject;
     // prompt "" lets Google reuse an existing grant silently when possible.
     client.requestAccessToken({ prompt: interactive ? "" : "none" });
   });
@@ -305,6 +371,30 @@ export async function downloadBudget(
 
 function toMeta(json: { id: string; name: string; modifiedTime: string }): DriveFileRef {
   return { fileId: json.id, name: json.name, modifiedTime: json.modifiedTime };
+}
+
+/**
+ * List the budget files the app can see in the user's Drive, newest first.
+ * Under the `drive.file` scope this returns only files this app created or the
+ * user previously opened with it — which is exactly the budgets saved from
+ * BudgetOnTarget. Used as the mobile "Open from Drive" chooser, where the
+ * Google Picker is unreliable.
+ */
+export async function listBudgetFiles(token: string): Promise<DriveFileRef[]> {
+  const params = new URLSearchParams({
+    q: "trashed = false and (name contains '.budget' or mimeType = 'application/json')",
+    orderBy: "modifiedTime desc",
+    pageSize: "100",
+    fields: "files(id,name,modifiedTime)",
+  });
+  const res = await fetch(`${DRIVE_FILES}?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Drive list failed: ${res.status}`);
+  const json = (await res.json()) as {
+    files?: { id: string; name: string; modifiedTime: string }[];
+  };
+  return (json.files ?? []).map(toMeta);
 }
 
 /** Create a brand-new .budget file in the user's Drive (root folder). */

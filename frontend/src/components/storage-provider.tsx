@@ -26,6 +26,7 @@ import {
   type WritableFileHandle,
 } from "@/lib/local-engine/file-io";
 import {
+  DriveAuthError,
   DriveCancelledError,
   DriveConflictError,
   clearAccessToken,
@@ -33,10 +34,13 @@ import {
   driveMeta,
   getAccessToken,
   getCachedToken,
+  listBudgetFiles,
   openFromDrive as driveOpen,
+  preloadDriveScripts,
   saveToDrive as driveSave,
   type DriveFileRef,
 } from "@/lib/drive/google-drive";
+import { isDriveConfigured } from "@/lib/drive/config";
 
 interface StorageContextValue {
   dirty: boolean;
@@ -51,10 +55,16 @@ interface StorageContextValue {
   driveConflict: DriveFileRef | null;
   /** Set when a background check finds a newer Drive copy on another device. */
   remoteUpdate: DriveFileRef | null;
+  /** Set when the mobile Drive open flow needs the user to pick from a list. */
+  driveChooser: DriveFileRef[] | null;
 
   // open / save
   openFromLocal: () => Promise<void>;
   openFromDrive: () => Promise<void>;
+  /** Open a budget chosen from the mobile Drive chooser. */
+  chooseDriveFile: (ref: DriveFileRef) => Promise<void>;
+  /** Dismiss the mobile Drive chooser without opening anything. */
+  cancelDriveChooser: () => void;
   saveToLocal: () => Promise<void>;
   saveToDrive: (force?: boolean) => Promise<void>;
   /** Quick-save to the current canonical location; opens nothing if none set. */
@@ -92,6 +102,9 @@ export function StorageProvider({ children }: { children: ReactNode }) {
   const [storageStatus, setStorageStatus] = useState<string | null>(null);
   const [driveConflict, setDriveConflict] = useState<DriveFileRef | null>(null);
   const [remoteUpdate, setRemoteUpdate] = useState<DriveFileRef | null>(null);
+  // Set when the mobile "Open from Drive" flow has more than one candidate and
+  // needs the user to choose which budget to open.
+  const [driveChooser, setDriveChooser] = useState<DriveFileRef[] | null>(null);
 
   // In-memory local handle (also persisted to IndexedDB for cross-reload reuse).
   const localHandle = useRef<WritableFileHandle | null>(null);
@@ -136,11 +149,56 @@ export function StorageProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, [store]);
 
+  // Warm up the Google sign-in client on the first user interaction, so that
+  // when the user later taps "Open/Save → Google Drive" the token request fires
+  // synchronously inside that tap and the sign-in popup is not blocked (the bug
+  // that made Drive open silently do nothing on mobile). Loads nothing until the
+  // user actually touches the app, and only once.
+  useEffect(() => {
+    if (!isDriveConfigured()) return;
+    let warmed = false;
+    const warm = () => {
+      if (warmed) return;
+      warmed = true;
+      void preloadDriveScripts();
+      window.removeEventListener("pointerdown", warm);
+      window.removeEventListener("keydown", warm);
+    };
+    window.addEventListener("pointerdown", warm);
+    window.addEventListener("keydown", warm);
+    return () => {
+      window.removeEventListener("pointerdown", warm);
+      window.removeEventListener("keydown", warm);
+    };
+  }, []);
+
   const markSaved = useCallback(() => {
     store.markClean();
     setDirty(false);
     dirtyRef.current = false;
   }, [store]);
+
+  /** Download a chosen Drive file into the store and make it canonical. */
+  const loadDriveFile = useCallback(
+    async (token: string, ref: DriveFileRef) => {
+      const data = await downloadBudget(token, ref.fileId);
+      store.load(data);
+      markSaved();
+      setFileLoaded(true);
+      setDriveRef(ref);
+      localHandle.current = null;
+      setRemoteUpdate(null);
+      const loc: StorageLocation = { kind: "drive", name: ref.name };
+      setLocation(loc);
+      await Promise.all([
+        saveDriveRef(ref),
+        saveLocalHandle(null),
+        saveLocation(loc),
+      ]);
+      setStorageStatus(`Opened ${ref.name} from Google Drive`);
+    },
+    [store, markSaved],
+  );
 
   // --- Open ------------------------------------------------------------------
 
@@ -175,6 +233,30 @@ export function StorageProvider({ children }: { children: ReactNode }) {
     setStorageBusy(true);
     setStorageStatus(null);
     try {
+      // The Google Picker is unreliable on mobile web, so on small screens we
+      // list the app's budget files (drive.file scope) and let the user choose
+      // in-app. Desktop keeps the richer Picker.
+      const useInAppList =
+        typeof window !== "undefined" &&
+        window.matchMedia("(max-width: 767px)").matches;
+
+      if (useInAppList) {
+        const token = await getAccessToken(true);
+        const files = await listBudgetFiles(token);
+        if (files.length === 0) {
+          setStorageStatus(
+            "No budget files found in your Drive yet. Save one to Drive first, then it'll show up here.",
+          );
+          return;
+        }
+        if (files.length === 1) {
+          await loadDriveFile(token, files[0]);
+          return;
+        }
+        setDriveChooser(files); // more than one — let the user pick
+        return;
+      }
+
       const { data, ref } = await driveOpen();
       store.load(data);
       markSaved();
@@ -192,11 +274,35 @@ export function StorageProvider({ children }: { children: ReactNode }) {
       setStorageStatus(`Opened ${ref.name} from Google Drive`);
     } catch (e) {
       if (e instanceof DriveCancelledError) setStorageStatus(null);
+      else if (e instanceof DriveAuthError) setStorageStatus(e.message);
       else setStorageStatus(`Couldn't open from Drive: ${(e as Error).message}`);
     } finally {
       setStorageBusy(false);
     }
-  }, [store, markSaved]);
+  }, [store, markSaved, loadDriveFile]);
+
+  /** Open a specific budget the user picked from the mobile Drive chooser. */
+  const chooseDriveFile = useCallback(
+    async (ref: DriveFileRef) => {
+      setDriveChooser(null);
+      setStorageBusy(true);
+      setStorageStatus(null);
+      try {
+        const token = await getAccessToken(true);
+        await loadDriveFile(token, ref);
+      } catch (e) {
+        if (e instanceof DriveCancelledError) setStorageStatus(null);
+        else if (e instanceof DriveAuthError) setStorageStatus(e.message);
+        else
+          setStorageStatus(`Couldn't open from Drive: ${(e as Error).message}`);
+      } finally {
+        setStorageBusy(false);
+      }
+    },
+    [loadDriveFile],
+  );
+
+  const cancelDriveChooser = useCallback(() => setDriveChooser(null), []);
 
   // --- Save ------------------------------------------------------------------
 
@@ -275,6 +381,8 @@ export function StorageProvider({ children }: { children: ReactNode }) {
           setStorageStatus(null);
         } else if (e instanceof DriveCancelledError) {
           setStorageStatus(null);
+        } else if (e instanceof DriveAuthError) {
+          setStorageStatus(e.message);
         } else {
           setStorageStatus(`Couldn't save to Drive: ${(e as Error).message}`);
         }
@@ -410,8 +518,11 @@ export function StorageProvider({ children }: { children: ReactNode }) {
         storageStatus,
         driveConflict,
         remoteUpdate,
+        driveChooser,
         openFromLocal,
         openFromDrive,
+        chooseDriveFile,
+        cancelDriveChooser,
         saveToLocal,
         saveToDrive,
         save,
