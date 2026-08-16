@@ -6,7 +6,8 @@ import { RuleList } from "@/components/settings/rule-list";
 import { MemberList } from "@/components/settings/member-list";
 import { AccountList } from "@/components/settings/account-list";
 import { DataPortability } from "@/components/settings/data-portability";
-import { Tag, ListFilter, Users, CreditCard, HardDrive } from "lucide-react";
+import { FeatureRequest } from "@/components/settings/feature-request";
+import { Tag, ListFilter, Users, CreditCard, HardDrive, Lightbulb } from "lucide-react";
 
 export default function SettingsPage() {
   return (
@@ -40,6 +41,10 @@ export default function SettingsPage() {
             <HardDrive className="size-3.5" />
             Data
           </TabsTrigger>
+          <TabsTrigger value="feedback" className="gap-1.5 px-3">
+            <Lightbulb className="size-3.5" />
+            Feedback
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="categories" className="mt-6">
@@ -60,6 +65,10 @@ export default function SettingsPage() {
 
         <TabsContent value="data" className="mt-6">
           <DataPortability />
+        </TabsContent>
+
+        <TabsContent value="feedback" className="mt-6">
+          <FeatureRequest />
         </TabsContent>
       </Tabs>
     </div>
