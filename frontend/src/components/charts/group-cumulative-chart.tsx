@@ -138,7 +138,7 @@ export function GroupCumulativeChart({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle>Spending Trends</CardTitle>
           <div className="flex rounded-lg bg-muted p-0.5">
             <button

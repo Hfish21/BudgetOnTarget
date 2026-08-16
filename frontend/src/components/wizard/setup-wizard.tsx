@@ -23,18 +23,18 @@ export function SetupWizard() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="border-b border-border px-6 py-4">
-        <div className="mx-auto flex max-w-3xl items-center justify-between">
+      <header className="border-b border-border px-4 py-4 sm:px-6">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <img src="/logo.svg" alt="" className="size-6" />
             <span className="text-sm font-semibold">BudgetOnTarget</span>
           </div>
           <WizardStepper currentStep={currentStep} />
-          <div className="w-[120px]" />
+          <div className="hidden w-[120px] sm:block" />
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-6 py-8">
+      <main className="flex-1 overflow-y-auto px-4 py-8 sm:px-6">
         <div className="mx-auto max-w-3xl">
           <StepComponent />
         </div>

@@ -31,7 +31,7 @@ export function Sidebar() {
   const { privacyMode, togglePrivacy } = usePrivacy();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col border-r border-border bg-card text-card-foreground">
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-border bg-card text-card-foreground md:flex">
       <div className="flex h-14 items-center gap-2.5 px-5">
         <img src="/logo.svg" alt="BudgetOnTarget" className="size-7" />
         <h1 className="text-lg font-semibold tracking-tight">BudgetOnTarget</h1>

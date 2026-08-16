@@ -92,14 +92,14 @@ export function CsvUpload({ onUploadComplete }: CsvUploadProps) {
   return (
     <div className="space-y-4">
       {/* Account selector */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <label className="text-sm font-medium">Account:</label>
         <select
           value={selectedAccountId ?? ""}
           onChange={(e) =>
             setSelectedAccountId(Number(e.target.value) || null)
           }
-          className="h-8 rounded-lg border border-input bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+          className="h-8 min-w-0 rounded-lg border border-input bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
         >
           {accounts.length === 0 && (
             <option value="">No accounts available</option>

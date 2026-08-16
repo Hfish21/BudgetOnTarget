@@ -70,7 +70,7 @@ export function ImportHistory({ imports, loading, onDeleted }: ImportHistoryProp
 
   return (
     <>
-      <div className="rounded-xl border bg-white">
+      <div className="rounded-xl border bg-card">
         <Table>
           <TableHeader>
             <TableRow>

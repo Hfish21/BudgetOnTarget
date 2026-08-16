@@ -102,7 +102,7 @@ export function RuleList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-base font-semibold">Category Rules</h3>
           <p className="text-xs text-muted-foreground">
@@ -145,7 +145,45 @@ export function RuleList() {
           </CardContent>
         </Card>
       ) : (
-        <div className="rounded-xl border border-border overflow-hidden">
+        <>
+        {/* Mobile: card list */}
+        <div className="space-y-2 md:hidden">
+          {rules.map((rule) => (
+            <div
+              key={rule.id}
+              className={`space-y-2 rounded-xl border border-border p-3 ${!rule.is_active ? "opacity-50" : ""}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <code className="min-w-0 break-all rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
+                  {rule.pattern}
+                </code>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Switch
+                    checked={rule.is_active}
+                    onCheckedChange={() => handleToggle(rule)}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => setDeleteTarget(rule)}
+                  >
+                    <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
+                  </Button>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span className="tabular-nums">#{rule.priority}</span>
+                <Badge variant="secondary" className="text-[10px] font-normal">
+                  {rule.match_type}
+                </Badge>
+                <span className="text-foreground/80">→ {rule.category_name}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop: table */}
+        <div className="hidden rounded-xl border border-border overflow-hidden md:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/50 text-muted-foreground">
@@ -197,6 +235,7 @@ export function RuleList() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {/* Add rule dialog */}

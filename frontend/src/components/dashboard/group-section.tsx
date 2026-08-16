@@ -117,14 +117,14 @@ export function GroupSection({
       )}
     >
       <div
-        className="flex w-full items-center justify-between border-b border-border pb-3 transition-colors hover:bg-accent/30 rounded px-2 py-1.5 cursor-pointer"
+        className="flex w-full items-center justify-between gap-2 border-b border-border pb-3 transition-colors hover:bg-accent/30 rounded px-2 py-1.5 cursor-pointer"
         role="button"
         tabIndex={0}
         aria-expanded={expanded}
         onClick={() => setExpanded(!expanded)}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpanded(!expanded); } }}
       >
-        <div className="space-y-2">
+        <div className="min-w-0 flex-1 space-y-2">
           <div className="flex items-center gap-2">
             <Icon className={cn("size-4", statusColor)} />
             <span className="text-base font-semibold uppercase tracking-wide text-foreground">
@@ -137,7 +137,7 @@ export function GroupSection({
               )}
             />
           </div>
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
             <span>
               <span className="font-medium text-foreground">
                 <Money>{formatCents(totalActual)}</Money>
@@ -156,7 +156,7 @@ export function GroupSection({
               )}
             </span>
           </div>
-          <div className="relative h-2 w-40 rounded-full bg-muted">
+          <div className="relative h-2 w-full max-w-40 rounded-full bg-muted">
             <div
               className={cn(
                 "h-full rounded-full transition-all",
@@ -173,7 +173,7 @@ export function GroupSection({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           <div
             role="button"
             tabIndex={0}

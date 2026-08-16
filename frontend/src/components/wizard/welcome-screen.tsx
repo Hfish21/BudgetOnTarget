@@ -18,7 +18,7 @@ export function WelcomeScreen({
   const driveOn = isDriveConfigured();
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-6">
+    <div className="flex min-h-screen items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-lg space-y-8 text-center">
         <div className="space-y-3">
           <div className="flex justify-center">
