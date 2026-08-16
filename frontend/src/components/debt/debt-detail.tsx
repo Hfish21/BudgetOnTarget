@@ -21,6 +21,12 @@ interface DebtDetailProps {
   refreshKey: number;
 }
 
+/** Month index for "YYYY-MM", for comparing payoff dates. */
+function monthIdx(key: string): number {
+  const [y, m] = key.split("-").map(Number);
+  return y * 12 + (m - 1);
+}
+
 function driftPhrase(drift: number | null): string {
   if (drift == null) return "";
   if (drift > 0) return `${drift} month${drift === 1 ? "" : "s"} later than plan`;
@@ -29,37 +35,20 @@ function driftPhrase(drift: number | null): string {
 }
 
 export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
+  // The base trajectory is your CURRENT PLAN (no new spending) — the "original".
+  // It only depends on the card, so the sliders never refetch it.
   const [trajectory, setTrajectory] = useState<DebtTrajectory | null>(null);
-  const [extraDollars, setExtraDollars] = useState("0");
+  // The combined what-if (future spending + extra payment) drives the scenario line.
   const [scenario, setScenario] = useState<DebtScenario | null>(null);
-
-  // Future-spend assumption for the projection: "stop" = $0/mo, "keep" = a
-  // monthly amount (prefilled from recent spend). History/status ignore this.
-  const [spendMode, setSpendMode] = useState<"stop" | "keep">("stop");
-  const [keepSpendDollars, setKeepSpendDollars] = useState("");
-  const futureSpendCents =
-    spendMode === "keep"
-      ? Math.max(0, Math.round(parseFloat(keepSpendDollars || "0") * 100))
-      : 0;
+  const [spendDollars, setSpendDollars] = useState("0"); // extra monthly spending
+  const [extraDollars, setExtraDollars] = useState("0"); // extra monthly payment
 
   useEffect(() => {
     let alive = true;
-    // Note: we intentionally do NOT clear `trajectory` or show a skeleton on
-    // refetch — that would unmount the inputs (stealing focus mid-typing) and
-    // flicker the chart. The stale trajectory stays visible until the new one
-    // arrives; the render guard below only shows a skeleton before the first
-    // load or when switching to a different card.
     api.debts
-      .getTrajectory(debtId, futureSpendCents)
+      .getTrajectory(debtId, 0)
       .then((t) => {
-        if (!alive) return;
-        setTrajectory(t);
-        setExtraDollars((prev) =>
-          prev === "0" ? (t.extra_payment_cents / 100).toFixed(0) : prev
-        );
-        setKeepSpendDollars((prev) =>
-          prev === "" ? (t.recent_monthly_spend_cents / 100).toFixed(0) : prev
-        );
+        if (alive) setTrajectory(t);
       })
       .catch(() => {
         /* non-critical */
@@ -67,52 +56,113 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
     return () => {
       alive = false;
     };
-  }, [debtId, refreshKey, futureSpendCents]);
+  }, [debtId, refreshKey]);
 
-  const runScenario = useCallback(
-    (dollars: string) => {
-      const extraCents = Math.max(0, Math.round(parseFloat(dollars || "0") * 100));
-      if (Number.isNaN(extraCents)) return;
-      api.debts
-        .getScenario(debtId, extraCents, futureSpendCents)
-        .then(setScenario)
-        .catch(() => {
-          /* non-critical */
-        });
-    },
-    [debtId, futureSpendCents]
-  );
+  const configuredExtraCents = trajectory?.extra_payment_cents ?? 0;
+  const extraPaymentCents = Math.max(0, Math.round(parseFloat(extraDollars || "0") * 100));
+  const spendCents = Math.max(0, Math.round(parseFloat(spendDollars || "0") * 100));
+
+  // Scenario payment = your plan (min + configured extra) + the extra you add here.
+  const runScenario = useCallback(() => {
+    api.debts
+      .getScenario(debtId, configuredExtraCents + extraPaymentCents, spendCents)
+      .then(setScenario)
+      .catch(() => {
+        /* non-critical */
+      });
+  }, [debtId, configuredExtraCents, extraPaymentCents, spendCents]);
 
   useEffect(() => {
-    if (trajectory) runScenario(extraDollars);
-  }, [trajectory, extraDollars, runScenario]);
+    if (trajectory) runScenario();
+  }, [trajectory, runScenario]);
 
   // Skeleton only before the first load or while switching to another card —
-  // never on an in-place refetch (typing a spend amount, toggling assumptions).
+  // never on an in-place refetch, so the inputs keep focus.
   if (!trajectory || trajectory.debt_id !== debtId) {
     return <div className="h-64 animate-pulse rounded-xl bg-muted" />;
   }
 
   const t = trajectory;
-  const payoffText = t.never_pays_off
-    ? "Never at this rate"
-    : (t.projected_payoff_label ?? "—");
+  const planPaymentCents = t.min_payment_cents + configuredExtraCents;
+  const isModified = extraPaymentCents > 0 || spendCents > 0;
+
+  const origKey = t.projected_payoff_month_key;
+  const scnKey = scenario?.payoff_month_key ?? null;
+  const monthsShift =
+    origKey && scnKey ? monthIdx(origKey) - monthIdx(scnKey) : null; // + => sooner
+  const scenarioAhead = monthsShift != null ? monthsShift > 0 : extraPaymentCents >= spendCents;
+  const showScenarioLine =
+    isModified && !!scenario && !scenario.never_pays_off && scenario.curve.length > 1;
+
   const headline = t.never_pays_off
-    ? spendMode === "keep"
-      ? "At your recent spending, this balance never gets paid off — spending outpaces the payment."
-      : "The minimum payment doesn't cover the monthly interest — this balance won't pay off. Increase the payment."
+    ? "The minimum payment doesn't cover the monthly interest — this balance won't pay off. Increase the payment."
     : t.is_paid_off
       ? "Paid off — nice work."
       : t.projected_payoff_label
         ? `Projected payoff ${t.projected_payoff_label}`
         : "Projected payoff — enter your payments to see it";
 
-  // The scenario line is drawn only when the explored payment differs from the
-  // current plan (min + configured extra) and actually pays off.
-  const planPayment = t.min_payment_cents + t.extra_payment_cents;
-  const scenarioAhead = scenario ? scenario.monthly_payment_cents > planPayment : true;
-  const showScenarioLine =
-    !!scenario && !scenario.never_pays_off && scenario.monthly_payment_cents !== planPayment;
+  // Plain-English result of the what-if.
+  let scenarioText: React.ReactNode = null;
+  if (isModified && scenario) {
+    const origInt = t.total_interest_remaining_cents;
+    const scnInt = scenario.total_interest_cents;
+    const interestDelta = origInt != null && scnInt != null ? origInt - scnInt : null;
+    if (scenario.never_pays_off) {
+      scenarioText = (
+        <span className="text-red-600 dark:text-red-400">
+          At {spendCents > 0 && <><Money>{formatCents(spendCents)}</Money>/mo spending</>}
+          {spendCents > 0 && extraPaymentCents > 0 ? " and " : ""}
+          {extraPaymentCents > 0 && <><Money>{formatCents(extraPaymentCents)}</Money>/mo extra</>}
+          , this never gets paid off — spending outpaces the payment.
+        </span>
+      );
+    } else {
+      const shiftPhrase =
+        monthsShift == null
+          ? "your current plan wouldn't pay it off"
+          : monthsShift > 0
+            ? `${monthsShift} month${monthsShift === 1 ? "" : "s"} sooner`
+            : monthsShift < 0
+              ? `${-monthsShift} month${-monthsShift === 1 ? "" : "s"} later`
+              : "the same timing";
+      scenarioText = (
+        <span>
+          Paid off <span className="font-semibold">{scenario.payoff_label}</span>
+          {" — "}
+          <span
+            className={cn(
+              "font-semibold",
+              scenarioAhead
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-amber-600 dark:text-amber-400"
+            )}
+          >
+            {shiftPhrase}
+          </span>{" "}
+          {monthsShift != null && (
+            <>than your current plan ({t.projected_payoff_label}). </>
+          )}
+          {interestDelta != null && interestDelta !== 0 && (
+            <>
+              {interestDelta > 0 ? "Saves " : "Costs "}
+              <span
+                className={cn(
+                  "font-semibold",
+                  interestDelta > 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-amber-600 dark:text-amber-400"
+                )}
+              >
+                <Money>{formatCents(Math.abs(interestDelta))}</Money>
+              </span>{" "}
+              {interestDelta > 0 ? "in interest." : "more in interest."}
+            </>
+          )}
+        </span>
+      );
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -135,12 +185,14 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
         <p className="mt-2 text-lg font-semibold tracking-tight">{headline}</p>
       </div>
 
-      {/* Key stats */}
+      {/* Key stats — your current plan */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Estimated balance now">
           <Money>{formatCents(t.current_balance_cents)}</Money>
         </Stat>
-        <Stat label="Projected payoff">{payoffText}</Stat>
+        <Stat label="Projected payoff (current plan)">
+          {t.never_pays_off ? "Never at this rate" : (t.projected_payoff_label ?? "—")}
+        </Stat>
         <Stat label="Months remaining">
           {t.months_remaining != null ? String(t.months_remaining) : "—"}
         </Stat>
@@ -185,61 +237,9 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
             from {t.anchor_date}. New purchases aren&rsquo;t tracked (no linked
             account) — link the card or re-anchor from a fresh statement to keep it
             accurate.
-            {t.min_payment_percent != null && (
-              <>
-                {" "}
-                Your minimum (<Money>{formatCents(t.min_payment_cents)}</Money>) is
-                about {t.min_payment_percent}% of the current balance.
-              </>
-            )}
           </p>
         )}
       </div>
-
-      {/* Projection assumption (linked cards only — needs spend data) */}
-      {t.is_linked && (
-        <div className="rounded-xl border border-border bg-card p-5">
-          <p className="text-sm font-semibold">Projection assumes…</p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant={spendMode === "stop" ? "default" : "outline"}
-              onClick={() => setSpendMode("stop")}
-            >
-              I stop charging
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={spendMode === "keep" ? "default" : "outline"}
-              onClick={() => setSpendMode("keep")}
-            >
-              I keep spending
-            </Button>
-            {spendMode === "keep" && (
-              <span className="flex items-center gap-1">
-                <span className="text-sm text-muted-foreground">$</span>
-                <Input
-                  type="number"
-                  min="0"
-                  step="50"
-                  value={keepSpendDollars}
-                  onChange={(e) => setKeepSpendDollars(e.target.value)}
-                  className="w-28"
-                />
-                <span className="text-sm text-muted-foreground">/ mo</span>
-              </span>
-            )}
-          </div>
-          {spendMode === "keep" && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Projecting continued spend at this rate on top of the plan payment.
-              Prefilled from your recent average.
-            </p>
-          )}
-        </div>
-      )}
 
       {/* Trajectory chart */}
       <div className="rounded-xl border border-border bg-card p-5">
@@ -247,95 +247,92 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
         <DebtTrajectoryChart
           trajectory={t}
           scenarioCurve={showScenarioLine ? scenario!.curve : null}
-          scenarioLabel={
-            scenario ? `${formatCents(scenario.monthly_payment_cents)}/mo` : undefined
-          }
-          scenarioAhead={scenario ? scenario.monthly_payment_cents > planPayment : true}
+          scenarioLabel="Your what-if"
+          scenarioAhead={scenarioAhead}
         />
-        {showScenarioLine && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            The {scenarioAhead ? "green" : "amber"} line is your{" "}
-            <Money>{formatCents(scenario!.monthly_payment_cents)}</Money>/mo
-            what-if — adjust the extra payment below to move it.
-          </p>
-        )}
       </div>
 
-      {/* Scenario explorer */}
+      {/* Unified projection panel: two levers -> one combined line */}
       <div className="rounded-xl border border-border bg-card p-5">
-        <p className="text-sm font-semibold">What if I pay extra?</p>
+        <p className="text-sm font-semibold">Project your payoff</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          On top of the <Money>{formatCents(t.min_payment_cents)}</Money> minimum,
-          each month
-          {spendMode === "keep" && futureSpendCents > 0 && (
-            <>
-              {" "}
-              (and still spending{" "}
-              <Money>{formatCents(futureSpendCents)}</Money>/mo)
-            </>
-          )}
-          .
+          Adjust either lever. Spending more pushes the payoff out; paying more
+          brings it in — the line on the chart is the net of the two, compared to
+          your current plan (paying{" "}
+          <Money>{formatCents(planPaymentCents)}</Money>/mo).
         </p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1">
-            <span className="text-sm text-muted-foreground">$</span>
-            <Input
-              type="number"
-              min="0"
-              step="25"
-              value={extraDollars}
-              onChange={(e) => setExtraDollars(e.target.value)}
-              className="w-28"
-            />
-            <span className="text-sm text-muted-foreground">/ mo extra</span>
-          </div>
-          {[50, 100, 200].map((amt) => (
-            <Button
-              key={amt}
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setExtraDollars(String(amt))}
-            >
-              +${amt}
-            </Button>
-          ))}
-        </div>
 
-        {scenario && (
-          <div className="mt-4 rounded-lg bg-muted/40 p-4 text-sm">
-            {scenario.never_pays_off ? (
-              <p className="text-red-600 dark:text-red-400">
-                Even at{" "}
-                <Money>{formatCents(scenario.monthly_payment_cents)}</Money>/mo,
-                this doesn&rsquo;t outpace interest
-                {futureSpendCents > 0 ? " and new spending" : ""} — the balance
-                won&rsquo;t pay off.
-              </p>
-            ) : (
-              <p>
-                Paying{" "}
-                <span className="font-semibold">
-                  <Money>{formatCents(scenario.monthly_payment_cents)}</Money>/mo
-                </span>{" "}
-                pays this off{" "}
-                <span className="font-semibold">{scenario.payoff_label}</span>
-                {scenario.months_remaining != null && (
-                  <> ({scenario.months_remaining} months)</>
-                )}
-                {scenario.interest_saved_cents > 0 && (
-                  <>
-                    {" "}
-                    — saving{" "}
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                      <Money>{formatCents(scenario.interest_saved_cents)}</Money>
-                    </span>{" "}
-                    in interest vs. the minimum.
-                  </>
-                )}
-              </p>
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">
+              Extra monthly spending
+            </label>
+            <div className="mt-1 flex items-center gap-1">
+              <span className="text-sm text-muted-foreground">$</span>
+              <Input
+                type="number"
+                min="0"
+                step="50"
+                value={spendDollars}
+                onChange={(e) => setSpendDollars(e.target.value)}
+                className="w-28"
+              />
+              <span className="text-sm text-muted-foreground">/ mo</span>
+            </div>
+            {t.is_linked && t.recent_monthly_spend_cents > 0 && (
+              <button
+                type="button"
+                onClick={() =>
+                  setSpendDollars((t.recent_monthly_spend_cents / 100).toFixed(0))
+                }
+                className="mt-1.5 text-xs text-primary hover:underline"
+              >
+                Use my recent average (
+                {formatCents(t.recent_monthly_spend_cents)}/mo)
+              </button>
             )}
           </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">
+              Extra monthly payment
+            </label>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1">
+                <span className="text-sm text-muted-foreground">$</span>
+                <Input
+                  type="number"
+                  min="0"
+                  step="25"
+                  value={extraDollars}
+                  onChange={(e) => setExtraDollars(e.target.value)}
+                  className="w-28"
+                />
+                <span className="text-sm text-muted-foreground">/ mo</span>
+              </div>
+              {[50, 100, 200].map((amt) => (
+                <Button
+                  key={amt}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setExtraDollars(String(amt))}
+                >
+                  +${amt}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {isModified && scenarioText && (
+          <div className="mt-4 rounded-lg bg-muted/40 p-4 text-sm">{scenarioText}</div>
+        )}
+        {!isModified && (
+          <p className="mt-4 text-xs text-muted-foreground">
+            Both at $0 shows just your current plan. Bump either to see the
+            what-if line appear.
+          </p>
         )}
       </div>
 
