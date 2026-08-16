@@ -26,10 +26,7 @@ export function CsvUploadStep() {
         reader.onload = () => {
           const text = reader.result as string;
           const cleanText = text.startsWith("﻿") ? text.slice(1) : text;
-          const { headers, sampleRows, config } = autoDetectConfig(
-            cleanText,
-            "checking"
-          );
+          const { headers, sampleRows, config } = autoDetectConfig(cleanText);
 
           addCsvFile({
             id: crypto.randomUUID(),

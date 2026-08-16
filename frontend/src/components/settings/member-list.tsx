@@ -13,7 +13,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, User, PackageOpen } from "lucide-react";
+import { Plus, PackageOpen } from "lucide-react";
 import type { HouseholdMember } from "@/types";
 
 export function MemberList() {

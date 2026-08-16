@@ -16,7 +16,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GROUP_COLORS, GROUP_ORDER, getGroupLabel, formatCents, CHART_COLORS, cn } from "@/lib/utils";
 import { usePrivacy } from "@/components/privacy-provider";
 import { PrivateYAxisTick } from "@/components/charts/private-axis-tick";
-import { Money } from "@/components/money";
 import { InfoTip } from "./info-tip";
 import type { LaneHistoryMonth, SpendGroup } from "@/types";
 import type { TargetWithHistory } from "@/app/trends/page";

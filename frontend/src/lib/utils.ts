@@ -14,19 +14,6 @@ export function formatCents(cents: number): string {
   return cents < 0 ? `-${formatted}` : formatted;
 }
 
-export function getStatusColor(status: string): string {
-  switch (status) {
-    case "on_target":
-      return "text-green-600";
-    case "in_tolerance":
-      return "text-yellow-600";
-    case "off_target":
-      return "text-red-600";
-    default:
-      return "text-gray-600";
-  }
-}
-
 export function getStatusBgColor(status: string): string {
   switch (status) {
     case "on_target":
@@ -124,15 +111,6 @@ export function getGroupLabel(group: string): string {
     default:
       return group;
   }
-}
-
-export function deriveGroupStatus(
-  statuses: string[]
-): "on_target" | "in_tolerance" | "off_target" {
-  if (statuses.length === 0) return "on_target";
-  if (statuses.some((s) => s === "off_target")) return "off_target";
-  if (statuses.some((s) => s === "in_tolerance")) return "in_tolerance";
-  return "on_target";
 }
 
 export function getStatusBorderColor(status: string): string {
