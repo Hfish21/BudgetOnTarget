@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sparkles, HardDrive, Cloud } from "lucide-react";
 import { isDriveConfigured } from "@/lib/drive/config";
+import { preloadDriveScripts } from "@/lib/drive/google-drive";
 
 interface WelcomeScreenProps {
   onOpenFromLocal: () => void;
@@ -16,6 +18,13 @@ export function WelcomeScreen({
   onStartWizard,
 }: WelcomeScreenProps) {
   const driveOn = isDriveConfigured();
+
+  // Warm the Google sign-in client up front so tapping "Google Drive" here —
+  // possibly the user's very first interaction — fires the token request inside
+  // the tap and the popup is not blocked.
+  useEffect(() => {
+    if (driveOn) void preloadDriveScripts();
+  }, [driveOn]);
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4 sm:p-6">
