@@ -53,7 +53,7 @@ BudgetOnTarget/
 | `csv-parser-generic.ts` | Any bank, via user-supplied column mapping. Auto-detects headers and date format. |
 | `importer.ts` | Dedup by hash, auto-categorize, internal-transfer detection, pending overlay. |
 | `hasher.ts` | SHA-256 via the Web Crypto API. |
-| `file-io.ts` | File System Access API with a download fallback; IndexedDB auto-save. |
+| `file-io.ts` | File System Access API with a download fallback; IndexedDB auto-save; Drive-file ref persistence. |
 | `local-api.ts` | Assembles the modules above into the API surface components call. |
 
 ### The API seam
@@ -153,10 +153,11 @@ CSV file
 
 ## 6. Storage and Persistence
 
-Two layers, both entirely local:
+Three layers, all client-side:
 
 1. **IndexedDB auto-save** — `storage-provider.tsx` subscribes to the store and writes a serialized snapshot 2 seconds after the last change. This is what survives a page refresh.
 2. **`.budget` file** — an explicit save through the File System Access API (Chromium) or a download fallback. This is the durable copy the user owns and backs up.
+3. **Google Drive (optional)** — `lib/drive/google-drive.ts` opens/saves the same `.budget` JSON directly to the user's Drive, so one canonical file follows them across machines. The browser authenticates with Google (implicit token flow, no client secret) and talks straight to the Drive REST API; no BudgetOnTarget server is ever in the path. Uses the `drive.file` scope (app sees only files the user picks or creates), a short-lived in-memory access token with silent refresh, and a `modifiedTime` conflict guard before overwriting. A small Drive-file ref (never the token) is persisted in IndexedDB so a reload remembers the linkage. The Client ID + Picker API key in `lib/drive/config.ts` are public by design and committed (referrer-locked); `NEXT_PUBLIC_GOOGLE_*` env vars override them.
 
 `StorageProvider` also exposes a `dataVersion` counter that increments on every store mutation. Components depend on it to re-fetch, since the store is mutable and outside React's rendering model.
 
