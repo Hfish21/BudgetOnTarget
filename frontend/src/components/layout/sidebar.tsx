@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { MonthSelector } from "@/components/dashboard/month-selector";
 import { usePrivacy } from "@/components/privacy-provider";
 import { useStorage } from "@/components/storage-provider";
+import { DriveControls } from "@/components/layout/drive-controls";
 
 const navItems = [
   { href: "/app/dashboard", label: "Monthly", icon: LayoutDashboard },
@@ -103,6 +104,9 @@ export function Sidebar() {
             </span>
           )}
         </div>
+
+        <DriveControls />
+
         <button
           onClick={togglePrivacy}
           className={cn(

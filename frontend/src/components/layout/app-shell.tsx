@@ -8,7 +8,7 @@ import { SetupWizard } from "@/components/wizard/setup-wizard";
 import { WizardProvider } from "@/components/wizard/wizard-context";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { fileLoaded, loading, openFile } = useStorage();
+  const { fileLoaded, loading, openFile, openFromDrive } = useStorage();
   const [showWizard, setShowWizard] = useState(false);
 
   if (loading) {
@@ -23,6 +23,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <WelcomeScreen
         onOpenFile={openFile}
+        onOpenFromDrive={openFromDrive}
         onStartWizard={() => setShowWizard(true)}
       />
     );

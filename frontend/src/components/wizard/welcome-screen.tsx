@@ -1,14 +1,20 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { FolderOpen, Sparkles } from "lucide-react";
+import { FolderOpen, Sparkles, CloudDownload } from "lucide-react";
+import { isDriveConfigured } from "@/lib/drive/config";
 
 interface WelcomeScreenProps {
   onOpenFile: () => void;
+  onOpenFromDrive: () => void;
   onStartWizard: () => void;
 }
 
-export function WelcomeScreen({ onOpenFile, onStartWizard }: WelcomeScreenProps) {
+export function WelcomeScreen({
+  onOpenFile,
+  onOpenFromDrive,
+  onStartWizard,
+}: WelcomeScreenProps) {
   return (
     <div className="flex min-h-screen items-center justify-center p-6">
       <div className="w-full max-w-lg space-y-8 text-center">
@@ -57,6 +63,16 @@ export function WelcomeScreen({ onOpenFile, onStartWizard }: WelcomeScreenProps)
             </CardContent>
           </Card>
         </div>
+
+        {isDriveConfigured() && (
+          <button
+            onClick={onOpenFromDrive}
+            className="mx-auto flex items-center gap-2 rounded-lg px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-accent-foreground"
+          >
+            <CloudDownload className="size-4" />
+            Open from Google Drive
+          </button>
+        )}
 
         <p className="text-xs text-muted-foreground/60">
           BudgetOnTarget v0.1.0

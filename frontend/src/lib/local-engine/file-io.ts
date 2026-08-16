@@ -1,4 +1,5 @@
 import type { BudgetFile } from "./types";
+import type { DriveFileRef } from "../drive/google-drive";
 
 export async function saveBudgetFile(data: BudgetFile): Promise<void> {
   const json = JSON.stringify(data, null, 2);
@@ -78,6 +79,7 @@ export async function openBudgetFile(): Promise<BudgetFile | null> {
 const IDB_NAME = "budgetontarget";
 const IDB_STORE = "autosave";
 const IDB_KEY = "current";
+const IDB_DRIVE_KEY = "driveRef";
 
 function openIDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -108,6 +110,44 @@ export async function loadAutoSave(): Promise<BudgetFile | null> {
     const req = tx.objectStore(IDB_STORE).get(IDB_KEY);
     const result = await new Promise<BudgetFile | null>((resolve, reject) => {
       req.onsuccess = () => resolve(req.result ?? null);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Persist the pointer to a Drive-backed file (or clear it with `null`), so a
+ * reload knows the current budget lives in Google Drive. The access token is
+ * never stored — only this small, non-sensitive reference.
+ */
+export async function saveDriveRef(ref: DriveFileRef | null): Promise<void> {
+  try {
+    const db = await openIDB();
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    const store = tx.objectStore(IDB_STORE);
+    if (ref) store.put(ref, IDB_DRIVE_KEY);
+    else store.delete(IDB_DRIVE_KEY);
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch {
+    // best-effort; a lost ref just means the user re-picks the file
+  }
+}
+
+export async function loadDriveRef(): Promise<DriveFileRef | null> {
+  try {
+    const db = await openIDB();
+    const tx = db.transaction(IDB_STORE, "readonly");
+    const req = tx.objectStore(IDB_STORE).get(IDB_DRIVE_KEY);
+    const result = await new Promise<DriveFileRef | null>((resolve, reject) => {
+      req.onsuccess = () => resolve((req.result as DriveFileRef) ?? null);
       req.onerror = () => reject(req.error);
     });
     db.close();
