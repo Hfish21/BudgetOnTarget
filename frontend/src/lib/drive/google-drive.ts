@@ -170,6 +170,18 @@ export function clearAccessToken(): void {
   tokenExpiry = 0;
 }
 
+/**
+ * Return the current in-memory access token only if it is still valid — never
+ * requests a new one. Used by background checks that must stay silent: GIS's
+ * token popup is blocked without a user gesture, so a background refresh can
+ * only proceed when a token is already warm (i.e. shortly after the user did a
+ * Drive open/save). Returns null otherwise, and the caller skips quietly.
+ */
+export function getCachedToken(): string | null {
+  if (accessToken && Date.now() < tokenExpiry - 60_000) return accessToken;
+  return null;
+}
+
 // --- Picker ------------------------------------------------------------------
 
 interface PickerDocument {

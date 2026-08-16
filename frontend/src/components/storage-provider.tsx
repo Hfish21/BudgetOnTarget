@@ -32,6 +32,7 @@ import {
   downloadBudget,
   driveMeta,
   getAccessToken,
+  getCachedToken,
   openFromDrive as driveOpen,
   saveToDrive as driveSave,
   type DriveFileRef,
@@ -362,8 +363,11 @@ export function StorageProvider({ children }: { children: ReactNode }) {
       const now = Date.now();
       if (now - lastRemoteCheck.current < 8000) return; // throttle
       lastRemoteCheck.current = now;
+      // Only proceed with a warm token — never trigger a (blocked) popup in the
+      // background. If there's no token yet, the save-time guard still protects.
+      const token = getCachedToken();
+      if (!token) return;
       try {
-        const token = await getAccessToken(false); // silent; no popup
         const meta = await driveMeta(token, driveRef.fileId);
         if (meta.modifiedTime === driveRef.modifiedTime) return;
         if (dirtyRef.current) {
