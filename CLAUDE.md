@@ -22,7 +22,7 @@ Everything is in `frontend/`. There is no backend.
 - **Local engine** (`src/lib/local-engine/`) — the entire application core:
   - `store.ts` — in-memory data store with CRUD, dirty tracking, subscriber pattern
   - `target-engine.ts` — budget assessments, cumulative daily tracking, lane/target history
-  - `debt-engine.ts` — Debt Trajectory: credit-card payoff projection from a single-statement anchor, on-track/ahead/behind status, and extra-payment scenarios (pure money math)
+  - `debt-engine.ts` — Debt Trajectory: credit-card payoff projection from a single-statement anchor. A linked card account drives the real balance (charges raise it, payments lower it); the forward projection uses APR + a future-spend assumption (stop-charging vs keep-spending). Exposes on-track/ahead/behind status and extra-payment scenarios (pure money math)
   - `categorizer.ts` — rule matching (substring/regex), bulk recategorization
   - `csv-parser.ts` — USAA CSV format parser with sign normalization
   - `csv-parser-generic.ts` — any-bank parser driven by a user-supplied column mapping

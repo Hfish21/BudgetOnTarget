@@ -247,12 +247,23 @@ export function DebtForm({ debt, onSave, onCancel }: DebtFormProps) {
             month.
           </p>
 
+          {accountId != null ? (
+            <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+              Because this card is linked to an account, its{" "}
+              <span className="font-medium text-foreground">
+                spending and payments are read automatically
+              </span>{" "}
+              from that account&rsquo;s transactions since the statement date — no
+              categories to pick. Charges raise the balance; payments pay it down.
+            </div>
+          ) : (
           <div>
             <Label>Which categories are payments toward this card?</Label>
             <p className="mb-2 text-xs text-muted-foreground">
-              Transactions in these categories (on or after the statement date)
-              count as payments. A card usually has its own dedicated payment
-              category.
+              No account is linked, so pick the categories whose transactions (on
+              or after the statement date) are payments toward this card. A card
+              usually has its own dedicated payment category. Spending
+              won&rsquo;t be tracked without a linked account.
             </p>
             {categories.length === 0 ? (
               <p className="text-sm text-muted-foreground">
@@ -302,6 +313,7 @@ export function DebtForm({ debt, onSave, onCancel }: DebtFormProps) {
               </Button>
             </div>
           </div>
+          )}
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 

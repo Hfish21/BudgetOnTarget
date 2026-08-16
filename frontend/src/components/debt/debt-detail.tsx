@@ -11,6 +11,7 @@ import {
   getDebtStatusLabel,
   getDebtStatusBgColor,
   getDebtStatusTextColor,
+  cn,
 } from "@/lib/utils";
 import { AlertTriangle } from "lucide-react";
 import type { DebtTrajectory, DebtScenario } from "@/types";
@@ -33,15 +34,29 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
   const [extraDollars, setExtraDollars] = useState("0");
   const [scenario, setScenario] = useState<DebtScenario | null>(null);
 
+  // Future-spend assumption for the projection: "stop" = $0/mo, "keep" = a
+  // monthly amount (prefilled from recent spend). History/status ignore this.
+  const [spendMode, setSpendMode] = useState<"stop" | "keep">("stop");
+  const [keepSpendDollars, setKeepSpendDollars] = useState("");
+  const futureSpendCents =
+    spendMode === "keep"
+      ? Math.max(0, Math.round(parseFloat(keepSpendDollars || "0") * 100))
+      : 0;
+
   useEffect(() => {
     let alive = true;
     setLoading(true);
     api.debts
-      .getTrajectory(debtId)
+      .getTrajectory(debtId, futureSpendCents)
       .then((t) => {
         if (!alive) return;
         setTrajectory(t);
-        setExtraDollars((t.extra_payment_cents / 100).toFixed(0));
+        setExtraDollars((prev) =>
+          prev === "0" ? (t.extra_payment_cents / 100).toFixed(0) : prev
+        );
+        setKeepSpendDollars((prev) =>
+          prev === "" ? (t.recent_monthly_spend_cents / 100).toFixed(0) : prev
+        );
       })
       .catch(() => {
         /* non-critical */
@@ -52,20 +67,20 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
     return () => {
       alive = false;
     };
-  }, [debtId, refreshKey]);
+  }, [debtId, refreshKey, futureSpendCents]);
 
   const runScenario = useCallback(
     (dollars: string) => {
       const extraCents = Math.max(0, Math.round(parseFloat(dollars || "0") * 100));
       if (Number.isNaN(extraCents)) return;
       api.debts
-        .getScenario(debtId, extraCents)
+        .getScenario(debtId, extraCents, futureSpendCents)
         .then(setScenario)
         .catch(() => {
           /* non-critical */
         });
     },
-    [debtId]
+    [debtId, futureSpendCents]
   );
 
   useEffect(() => {
@@ -77,8 +92,13 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
   }
 
   const t = trajectory;
+  const payoffText = t.never_pays_off
+    ? "Never at this rate"
+    : (t.projected_payoff_label ?? "—");
   const headline = t.never_pays_off
-    ? "The minimum payment doesn't cover the monthly interest — this balance won't pay off. Increase the payment."
+    ? spendMode === "keep"
+      ? "At your recent spending, this balance never gets paid off — spending outpaces the payment."
+      : "The minimum payment doesn't cover the monthly interest — this balance won't pay off. Increase the payment."
     : t.is_paid_off
       ? "Paid off — nice work."
       : t.projected_payoff_label
@@ -111,13 +131,11 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
         <Stat label="Estimated balance now">
           <Money>{formatCents(t.current_balance_cents)}</Money>
         </Stat>
-        <Stat label="Projected payoff">
-          {t.projected_payoff_label ?? "—"}
-        </Stat>
+        <Stat label="Projected payoff">{payoffText}</Stat>
         <Stat label="Months remaining">
           {t.months_remaining != null ? String(t.months_remaining) : "—"}
         </Stat>
-        <Stat label="Interest left (on plan)">
+        <Stat label="Interest left">
           {t.total_interest_remaining_cents != null ? (
             <Money>{formatCents(t.total_interest_remaining_cents)}</Money>
           ) : (
@@ -129,23 +147,90 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
       {/* Assumption note */}
       <div className="flex gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">
         <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-500" />
-        <p>
-          This projects the payoff of your{" "}
-          <span className="font-medium text-foreground">
-            <Money>{formatCents(t.anchor_balance_cents)}</Money> anchor balance
-          </span>{" "}
-          from {t.anchor_date}. New purchases on the card aren&rsquo;t tracked, so
-          if you&rsquo;re still spending on it, edit the card to re-anchor from a
-          fresh statement.
-          {t.min_payment_percent != null && (
-            <>
-              {" "}
-              Your minimum (<Money>{formatCents(t.min_payment_cents)}</Money>) is
-              about {t.min_payment_percent}% of the current balance.
-            </>
-          )}
-        </p>
+        {t.is_linked ? (
+          <p>
+            Balance tracked from the linked card account since {t.anchor_date}:
+            charges add to it, payments pay it down, starting from your{" "}
+            <span className="font-medium text-foreground">
+              <Money>{formatCents(t.anchor_balance_cents)}</Money> anchor
+            </span>
+            .
+            {t.recent_monthly_spend_cents > 0 && (
+              <>
+                {" "}
+                You&rsquo;ve been charging about{" "}
+                <span className="font-medium text-foreground">
+                  <Money>{formatCents(t.recent_monthly_spend_cents)}</Money>/mo
+                </span>{" "}
+                lately.
+              </>
+            )}{" "}
+            Re-anchor from a fresh statement anytime to reset.
+          </p>
+        ) : (
+          <p>
+            This projects the payoff of your{" "}
+            <span className="font-medium text-foreground">
+              <Money>{formatCents(t.anchor_balance_cents)}</Money> anchor balance
+            </span>{" "}
+            from {t.anchor_date}. New purchases aren&rsquo;t tracked (no linked
+            account) — link the card or re-anchor from a fresh statement to keep it
+            accurate.
+            {t.min_payment_percent != null && (
+              <>
+                {" "}
+                Your minimum (<Money>{formatCents(t.min_payment_cents)}</Money>) is
+                about {t.min_payment_percent}% of the current balance.
+              </>
+            )}
+          </p>
+        )}
       </div>
+
+      {/* Projection assumption (linked cards only — needs spend data) */}
+      {t.is_linked && (
+        <div className="rounded-xl border border-border bg-card p-5">
+          <p className="text-sm font-semibold">Projection assumes…</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={spendMode === "stop" ? "default" : "outline"}
+              onClick={() => setSpendMode("stop")}
+            >
+              I stop charging
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={spendMode === "keep" ? "default" : "outline"}
+              onClick={() => setSpendMode("keep")}
+            >
+              I keep spending
+            </Button>
+            {spendMode === "keep" && (
+              <span className="flex items-center gap-1">
+                <span className="text-sm text-muted-foreground">$</span>
+                <Input
+                  type="number"
+                  min="0"
+                  step="50"
+                  value={keepSpendDollars}
+                  onChange={(e) => setKeepSpendDollars(e.target.value)}
+                  className="w-28"
+                />
+                <span className="text-sm text-muted-foreground">/ mo</span>
+              </span>
+            )}
+          </div>
+          {spendMode === "keep" && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Projecting continued spend at this rate on top of the plan payment.
+              Prefilled from your recent average.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Trajectory chart */}
       <div className="rounded-xl border border-border bg-card p-5">
@@ -158,7 +243,15 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
         <p className="text-sm font-semibold">What if I pay extra?</p>
         <p className="mt-1 text-xs text-muted-foreground">
           On top of the <Money>{formatCents(t.min_payment_cents)}</Money> minimum,
-          each month.
+          each month
+          {spendMode === "keep" && futureSpendCents > 0 && (
+            <>
+              {" "}
+              (and still spending{" "}
+              <Money>{formatCents(futureSpendCents)}</Money>/mo)
+            </>
+          )}
+          .
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1">
@@ -192,8 +285,9 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
               <p className="text-red-600 dark:text-red-400">
                 Even at{" "}
                 <Money>{formatCents(scenario.monthly_payment_cents)}</Money>/mo,
-                this doesn&rsquo;t cover the interest — the balance won&rsquo;t pay
-                off.
+                this doesn&rsquo;t outpace interest
+                {futureSpendCents > 0 ? " and new spending" : ""} — the balance
+                won&rsquo;t pay off.
               </p>
             ) : (
               <p>
@@ -236,7 +330,7 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
                 className="flex flex-col items-center gap-1"
               >
                 <span
-                  className={`size-6 rounded-md ${getDebtStatusBgColor(m.status)}`}
+                  className={cn("size-6 rounded-md", getDebtStatusBgColor(m.status))}
                 />
                 <span className="text-[9px] text-muted-foreground">
                   {m.label.slice(0, 3)}

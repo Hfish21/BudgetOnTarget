@@ -668,19 +668,23 @@ export const localApi = {
       if (!store.deleteDebt(id)) throw new Error("Debt not found");
     },
 
-    getTrajectory: async (id: number): Promise<DebtTrajectory> => {
+    getTrajectory: async (
+      id: number,
+      futureMonthlySpendCents = 0
+    ): Promise<DebtTrajectory> => {
       const debt = store.debtById(id);
       if (!debt) throw new Error("Debt not found");
-      return assessDebt(store, debt);
+      return assessDebt(store, debt, futureMonthlySpendCents);
     },
 
     getScenario: async (
       id: number,
-      extraCents: number
+      extraCents: number,
+      futureMonthlySpendCents = 0
     ): Promise<DebtScenario> => {
       const debt = store.debtById(id);
       if (!debt) throw new Error("Debt not found");
-      return scenarioDebt(store, debt, extraCents);
+      return scenarioDebt(store, debt, extraCents, futureMonthlySpendCents);
     },
   },
 
