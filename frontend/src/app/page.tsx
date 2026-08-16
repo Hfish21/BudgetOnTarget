@@ -95,7 +95,7 @@ export default function LandingPage() {
           </span>
         </div>
         <Link
-          href="/app"
+          href="/app/dashboard"
           className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
         >
           Open the app
@@ -119,7 +119,7 @@ export default function LandingPage() {
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link
-              href="/app"
+              href="/app/dashboard"
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
             >
               Get started
@@ -315,7 +315,7 @@ export default function LandingPage() {
             you finish your coffee.
           </p>
           <Link
-            href="/app"
+            href="/app/dashboard"
             className="mt-8 inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
           >
             Get started
@@ -334,7 +334,7 @@ export default function LandingPage() {
             >
               GitHub
             </a>
-            <Link href="/app" className="transition-colors hover:text-foreground">
+            <Link href="/app/dashboard" className="transition-colors hover:text-foreground">
               Open the app
             </Link>
           </div>
