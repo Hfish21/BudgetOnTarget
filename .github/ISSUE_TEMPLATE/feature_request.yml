@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest a new feature or improvement for BudgetOnTarget
+title: "[Feature]: "
+labels: ["feature-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping shape BudgetOnTarget! Fill in whatever you can — even a one-liner is useful.
+
+        **Please don't include any personal financial data** (real transactions, account numbers, balances). This is a public issue.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area of the app
+      description: Which part of BudgetOnTarget does this relate to?
+      options:
+        - Not sure / general
+        - Importing transactions
+        - Categories & rules
+        - Targets & budgets
+        - Monthly dashboard
+        - Trends
+        - Transactions view
+        - Settings & data
+        - Something else
+    validations:
+      required: false
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: What are you trying to do, or what's frustrating today? The "why" behind the request.
+      placeholder: e.g. "I can't tell at a glance how much I've spent on dining this month versus last month."
+    validations:
+      required: false
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Describe the feature
+      description: What would you like BudgetOnTarget to do?
+      placeholder: e.g. "A side-by-side comparison of this month's spending against the previous month, per category."
+    validations:
+      required: true
