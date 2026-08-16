@@ -1,5 +1,7 @@
 # CLAUDE.md — BudgetOnTarget
 
+> This file is Claude Code's project guide and stays the richest reference. A condensed, vendor-neutral version for other agents (Codex, Cursor, Copilot, etc.) lives in [AGENTS.md](AGENTS.md) — keep the two consistent when changing setup steps, guardrails, or architecture.
+
 ## What This Is
 Personal household budget dashboard. Users import bank CSVs, categorize transactions via rules, set monthly spending targets, and track progress. Runs entirely in the browser as a PWA — no server, no database, no accounts. Live at **budgetontarget.com**.
 
