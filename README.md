@@ -96,7 +96,9 @@ The whole app is a static Next.js frontend. **There is no backend, no database, 
 
 You need exactly two things: **Node.js 22** and **pnpm**. The repo pins both versions for you, so you don't have to guess.
 
-**1. Install Node.js 22.** If you use [nvm](https://github.com/nvm-sh/nvm) (recommended) or [fnm](https://github.com/Schniz/fnm), the repo's `.nvmrc` picks the right version automatically — see step 2 below. Otherwise, download Node 22 LTS from [nodejs.org](https://nodejs.org).
+**1. Install Node.js 22.**
+- **macOS / Linux:** if you use [nvm](https://github.com/nvm-sh/nvm) or [fnm](https://github.com/Schniz/fnm), the repo's `.nvmrc` picks the right version automatically (see step 2). Otherwise download Node 22 LTS from [nodejs.org](https://nodejs.org).
+- **Windows:** use [fnm](https://github.com/Schniz/fnm) (which reads `.nvmrc`), or the Node 22 LTS installer from [nodejs.org](https://nodejs.org), or [nvm-windows](https://github.com/coreybutler/nvm-windows). See [Developing on Windows](#developing-on-windows) below for the details.
 
 **2. You do _not_ need to install pnpm separately.** pnpm ships with Node via [Corepack](https://nodejs.org/api/corepack.html). One command turns it on and locks it to the exact version this repo expects:
 
@@ -113,8 +115,10 @@ That's the single step most people miss — it's why `pnpm: command not found` h
 git clone https://github.com/Hfish21/BudgetOnTarget.git
 cd BudgetOnTarget
 
-# 2. Use the pinned Node version (skip if not using nvm/fnm)
-nvm use                 # or: fnm use  — reads .nvmrc, installs 22 if needed
+# 2. Use the pinned Node version (skip if you installed Node 22 directly)
+nvm use                 # macOS/Linux — reads .nvmrc, installs 22 if needed
+# fnm use               # macOS/Linux/Windows — same, reads .nvmrc
+# (nvm-windows users: run  nvm use 22  — it does not read .nvmrc)
 
 # 3. Enable pnpm (once per machine)
 corepack enable
@@ -148,6 +152,21 @@ pnpm lint       # ESLint
 | `corepack: command not found` | Your Node is too old or Corepack is disabled. Install Node 22 LTS from [nodejs.org](https://nodejs.org), then retry. |
 | Port 3000 already in use | Stop the other process, or run `pnpm dev -- -p 3001` and open port 3001. |
 | Lockfile / install errors | Delete `frontend/node_modules` and run `pnpm install` again. |
+
+### Developing on Windows
+
+BudgetOnTarget develops on Windows with no code changes — it's a standard Node/pnpm/Next.js project. The steps are identical to above; only installing Node differs slightly. A few tips:
+
+- **Use PowerShell or Windows Terminal.** All commands (`corepack enable`, `pnpm install`, `pnpm dev`) work the same there. Git Bash and [WSL2](https://learn.microsoft.com/windows/wsl/install) also work well — WSL2 in particular gives you the exact same `nvm use` experience as macOS/Linux.
+- **Picking a Node version manager:**
+  - [**fnm**](https://github.com/Schniz/fnm) is the smoothest on Windows — it reads the repo's `.nvmrc`, so `fnm use` just works like it does on a Mac.
+  - [**nvm-windows**](https://github.com/coreybutler/nvm-windows) is popular but is a *different tool* from Mac/Linux `nvm` — it does **not** read `.nvmrc`. Run `nvm install 22 && nvm use 22` explicitly.
+  - Or skip version managers entirely and install the **Node 22 LTS** MSI from [nodejs.org](https://nodejs.org).
+- **Corepack works identically** — after Node is installed, `corepack enable` provisions pnpm just like on macOS. (If it reports a permissions error, open your terminal "as administrator" once for that command.)
+- **Line endings are handled for you.** A `.gitattributes` normalizes everything to LF on checkout, so you won't get CRLF diffs regardless of your Git config.
+- **Browser:** the app uses the File System Access API for saving `.budget` files, which is supported in **Chrome and Edge** on Windows (Firefox falls back to download/upload).
+
+If something OS-specific trips you up, open an issue — Windows is a supported, first-class dev environment.
 
 ## Architecture
 

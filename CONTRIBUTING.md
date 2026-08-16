@@ -19,7 +19,7 @@ pnpm install
 pnpm dev           # http://localhost:3000
 ```
 
-Full prerequisites and a troubleshooting table are in the [README → Running Locally](README.md#running-locally).
+Full prerequisites and a troubleshooting table are in the [README → Running Locally](README.md#running-locally). **Windows is fully supported** — see [Developing on Windows](README.md#developing-on-windows) for the small differences in installing Node.
 
 ## 2. Understand the layout
 

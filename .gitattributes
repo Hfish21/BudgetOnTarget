@@ -1,0 +1,18 @@
+# Normalize line endings so checkouts are consistent across macOS, Linux,
+# and Windows. Text files are stored with LF in the repo and checked out
+# with LF everywhere, preventing noisy CRLF diffs and tooling surprises.
+* text=auto eol=lf
+
+# Binary assets: never touch these.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.budget binary
+*.db binary

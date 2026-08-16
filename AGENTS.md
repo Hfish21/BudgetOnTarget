@@ -19,6 +19,8 @@ pnpm install
 pnpm dev                 # http://localhost:3000
 ```
 
+Cross-platform: macOS, Linux, and Windows all work with the same commands (use PowerShell, Windows Terminal, or WSL2 on Windows). A `.gitattributes` normalizes line endings to LF, so do not "fix" CRLF/LF differences.
+
 ## Verify your changes (required before proposing a PR)
 
 There is **no automated test suite.** The build is the verification gate — it is also the strictest type check. Run both from `frontend/`:
