@@ -99,12 +99,12 @@ export function NetCashFlowChart({ data }: NetCashFlowChartProps) {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <CardTitle>Net Cash Flow</CardTitle>
             <InfoTip text="Income minus total spending each month. Green area means surplus (saving), red means deficit (spending more than you earn). A downward slope means your margin is shrinking." />
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center gap-6">
             <div className="flex items-center gap-1.5">
               <div className="text-right">
                 <p className={`text-lg font-bold tabular-nums ${totalNet >= 0 ? "text-green-400" : "text-red-400"}`}>

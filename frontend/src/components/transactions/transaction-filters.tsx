@@ -100,88 +100,92 @@ export function TransactionFilters({
   }, []);
 
   const selectClass =
-    "h-8 rounded-lg border border-input bg-card px-3 pr-8 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring";
+    "h-8 w-full rounded-lg border border-input bg-card px-3 pr-8 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring sm:w-auto";
 
   const hasFilters = categoryId || memberId || search || uncategorizedOnly || lane || showExcluded;
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <select
-        value={lane ?? ""}
-        onChange={(e) => {
-          const val = e.target.value as SpendGroup | "";
-          setLane(val || undefined);
-          setCategoryId(undefined);
-        }}
-        className={selectClass}
-      >
-        <option value="">All Lanes</option>
-        {LANE_OPTIONS.map((l) => (
-          <option key={l.value} value={l.value}>
-            {l.label}
-          </option>
-        ))}
-      </select>
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:contents">
+        <select
+          value={lane ?? ""}
+          onChange={(e) => {
+            const val = e.target.value as SpendGroup | "";
+            setLane(val || undefined);
+            setCategoryId(undefined);
+          }}
+          className={selectClass}
+        >
+          <option value="">All Lanes</option>
+          {LANE_OPTIONS.map((l) => (
+            <option key={l.value} value={l.value}>
+              {l.label}
+            </option>
+          ))}
+        </select>
 
-      <select
-        value={categoryId ?? ""}
-        onChange={(e) =>
-          setCategoryId(e.target.value ? Number(e.target.value) : undefined)
-        }
-        className={selectClass}
-      >
-        <option value="">All Categories</option>
-        {filteredCategories.map((cat) => (
-          <option key={cat.id} value={cat.id}>
-            {cat.name}
-          </option>
-        ))}
-      </select>
+        <select
+          value={categoryId ?? ""}
+          onChange={(e) =>
+            setCategoryId(e.target.value ? Number(e.target.value) : undefined)
+          }
+          className={selectClass}
+        >
+          <option value="">All Categories</option>
+          {filteredCategories.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
+            </option>
+          ))}
+        </select>
 
-      <select
-        value={memberId ?? ""}
-        onChange={(e) =>
-          setMemberId(e.target.value ? Number(e.target.value) : undefined)
-        }
-        className={selectClass}
-      >
-        <option value="">All Members</option>
-        {members.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.name}
-          </option>
-        ))}
-      </select>
+        <select
+          value={memberId ?? ""}
+          onChange={(e) =>
+            setMemberId(e.target.value ? Number(e.target.value) : undefined)
+          }
+          className={selectClass}
+        >
+          <option value="">All Members</option>
+          {members.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <Input
         type="text"
         placeholder="Search transactions..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="h-8 w-56"
+        className="h-8 w-full sm:w-56"
       />
 
-      <Button
-        variant={uncategorizedOnly ? "default" : "outline"}
-        size="sm"
-        onClick={() => setUncategorizedOnly(!uncategorizedOnly)}
-      >
-        Uncategorized Only
-      </Button>
-
-      <Button
-        variant={showExcluded ? "default" : "outline"}
-        size="sm"
-        onClick={() => setShowExcluded(!showExcluded)}
-      >
-        Show Excluded
-      </Button>
-
-      {hasFilters && (
-        <Button variant="ghost" size="sm" onClick={handleClear}>
-          Clear
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant={uncategorizedOnly ? "default" : "outline"}
+          size="sm"
+          onClick={() => setUncategorizedOnly(!uncategorizedOnly)}
+        >
+          Uncategorized Only
         </Button>
-      )}
+
+        <Button
+          variant={showExcluded ? "default" : "outline"}
+          size="sm"
+          onClick={() => setShowExcluded(!showExcluded)}
+        >
+          Show Excluded
+        </Button>
+
+        {hasFilters && (
+          <Button variant="ghost" size="sm" onClick={handleClear}>
+            Clear
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

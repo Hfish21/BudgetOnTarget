@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { useStorage } from "@/components/storage-provider";
 import { Sidebar } from "@/components/layout/sidebar";
+import { MobileChrome } from "@/components/layout/mobile-chrome";
 import { WelcomeScreen } from "@/components/wizard/welcome-screen";
 import { SetupWizard } from "@/components/wizard/setup-wizard";
 import { WizardProvider } from "@/components/wizard/wizard-context";
@@ -41,8 +42,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <>
       <Suspense>
         <Sidebar />
+        <MobileChrome />
       </Suspense>
-      <main className="ml-60 min-h-screen p-6">{children}</main>
+      <main className="min-h-screen px-4 pt-[4.5rem] pb-24 md:ml-60 md:px-6 md:pt-6 md:pb-6">
+        {children}
+      </main>
     </>
   );
 }

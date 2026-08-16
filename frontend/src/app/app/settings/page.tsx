@@ -20,7 +20,11 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="categories" className="flex flex-col">
-        <TabsList variant="line" className="border-b border-border pb-0">
+        <div className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
+          <TabsList
+            variant="line"
+            className="min-w-max border-b border-border pb-0 sm:min-w-0"
+          >
           <TabsTrigger value="categories" className="gap-1.5 px-3">
             <Tag className="size-3.5" />
             Categories
@@ -45,7 +49,8 @@ export default function SettingsPage() {
             <Lightbulb className="size-3.5" />
             Feedback
           </TabsTrigger>
-        </TabsList>
+          </TabsList>
+        </div>
 
         <TabsContent value="categories" className="mt-6">
           <CategoryList />

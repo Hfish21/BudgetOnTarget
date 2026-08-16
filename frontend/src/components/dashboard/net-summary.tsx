@@ -50,26 +50,30 @@ export function NetSummary({ assessments }: NetSummaryProps) {
   const netRemaining = moneyIn - moneyOut;
 
   return (
-    <Card className="border border-border p-6">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
+    <Card className="border border-border p-5 sm:p-6">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        {/* Money In — a label/value row on mobile, a left block on desktop */}
+        <div className="order-2 flex items-center justify-between sm:order-none sm:block sm:space-y-1">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Money In
           </p>
-          <p className="text-xl font-semibold text-foreground">
-            <Money>{formatCents(moneyIn)}</Money>
-          </p>
-          <div className="flex items-center gap-1.5">
-            <div
-              className={`size-2 rounded-full ${getStatusBgColor(incomeStatus)}`}
-            />
-            <p className="text-xs text-muted-foreground">
-              vs <Money>{formatCents(moneyInTarget)}</Money> target
+          <div className="flex items-center gap-2 sm:block sm:space-y-1">
+            <p className="text-xl font-semibold text-foreground">
+              <Money>{formatCents(moneyIn)}</Money>
             </p>
+            <div className="flex items-center gap-1.5">
+              <div
+                className={`size-2 rounded-full ${getStatusBgColor(incomeStatus)}`}
+              />
+              <p className="text-xs text-muted-foreground">
+                vs <Money>{formatCents(moneyInTarget)}</Money> target
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="text-center">
+        {/* Net Remaining — the hero, first on mobile */}
+        <div className="order-1 text-center sm:order-none">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Net Remaining
           </p>
@@ -90,20 +94,23 @@ export function NetSummary({ assessments }: NetSummaryProps) {
           <p className="text-sm text-muted-foreground">left on the table</p>
         </div>
 
-        <div className="space-y-1 text-right">
+        {/* Money Out — a label/value row on mobile, a right block on desktop */}
+        <div className="order-3 flex items-center justify-between sm:order-none sm:block sm:space-y-1 sm:text-right">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Money Out
           </p>
-          <p className="text-xl font-semibold text-foreground">
-            <Money>{formatCents(moneyOut)}</Money>
-          </p>
-          <div className="flex items-center justify-end gap-1.5">
-            <div
-              className={`size-2 rounded-full ${getStatusBgColor(spendStatus)}`}
-            />
-            <p className="text-xs text-muted-foreground">
-              vs <Money>{formatCents(moneyOutTarget)}</Money> target
+          <div className="flex items-center gap-2 sm:block sm:space-y-1">
+            <p className="text-xl font-semibold text-foreground">
+              <Money>{formatCents(moneyOut)}</Money>
             </p>
+            <div className="flex items-center gap-1.5 sm:justify-end">
+              <div
+                className={`size-2 rounded-full ${getStatusBgColor(spendStatus)}`}
+              />
+              <p className="text-xs text-muted-foreground">
+                vs <Money>{formatCents(moneyOutTarget)}</Money> target
+              </p>
+            </div>
           </div>
         </div>
       </div>

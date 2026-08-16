@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +54,17 @@ export function DeltaBreakdownDialog({
   const [selectedBar, setSelectedBar] = useState<BarData | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [txLoading, setTxLoading] = useState(false);
+  // Default to the desktop width during SSR to avoid a hydration mismatch,
+  // then narrow the Y-axis label gutter on mobile so bars keep usable width.
+  const [yAxisWidth, setYAxisWidth] = useState(120);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 640px)");
+    const update = () => setYAxisWidth(mql.matches ? 120 : 72);
+    update();
+    mql.addEventListener("change", update);
+    return () => mql.removeEventListener("change", update);
+  }, []);
 
   const bars = useMemo(() => {
     const laneTargets = targets.filter((t) => t.spendGroup === lane);
@@ -199,7 +210,7 @@ export function DeltaBreakdownDialog({
                     dataKey="name"
                     tickLine={false}
                     axisLine={false}
-                    width={120}
+                    width={yAxisWidth}
                     tick={{ fill: "oklch(0.65 0 0)", fontSize: 11 }}
                   />
                   <ReferenceLine x={0} stroke="oklch(0.35 0 0)" />
