@@ -3,7 +3,7 @@
 import { LaneScorecard } from "./lane-scorecard";
 import { GROUP_ORDER, getGroupLabel } from "@/lib/utils";
 import type { LaneHistoryMonth, SpendGroup } from "@/types";
-import type { TargetWithHistory } from "@/app/trends/page";
+import type { TargetWithHistory } from "@/types";
 
 interface LaneScorecardGridProps {
   data: Record<string, LaneHistoryMonth[]>;

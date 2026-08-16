@@ -1,8 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { PrivacyProvider } from "@/components/privacy-provider";
-import { AppShell } from "@/components/layout/app-shell";
-import { StorageProvider } from "@/components/storage-provider";
 import { ServiceWorkerRegister } from "@/components/sw-register";
 import "./globals.css";
 
@@ -17,8 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BudgetOnTarget",
-  description: "Personal household spending dashboard",
+  title: "BudgetOnTarget — Budget targets that live in your browser",
+  description:
+    "Import your bank CSVs, set spending targets with tolerance bands, and track them month over month. No account, no server — your data stays in a file you own.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -34,6 +32,13 @@ export const viewport: Viewport = {
   themeColor: "#10B981",
 };
 
+/**
+ * Root layout for every route, marketing and app alike.
+ *
+ * Deliberately thin: the store, privacy context, and app chrome live in
+ * `app/app/layout.tsx` so the landing page renders as static HTML with no
+ * IndexedDB read and no wizard gating.
+ */
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -45,11 +50,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-background text-foreground`}
       >
         <ServiceWorkerRegister />
-        <StorageProvider>
-          <PrivacyProvider>
-            <AppShell>{children}</AppShell>
-          </PrivacyProvider>
-        </StorageProvider>
+        {children}
       </body>
     </html>
   );

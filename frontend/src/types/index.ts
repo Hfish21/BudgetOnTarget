@@ -189,6 +189,14 @@ export interface HouseholdMember {
   name: string;
 }
 
+/** A target paired with its month-by-month history, as the Trends page charts it. */
+export interface TargetWithHistory {
+  id: number;
+  name: string;
+  spendGroup: SpendGroup;
+  months: TargetHistoryMonth[];
+}
+
 export type TargetType = "monetary" | "count";
 export type Direction = "at_most" | "at_least" | "exactly";
 export type MatchType = "substring" | "regex";

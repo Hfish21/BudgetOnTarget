@@ -19,7 +19,7 @@ import {
 } from "@/lib/utils";
 import { Money } from "@/components/money";
 import type { LaneHistoryMonth, SpendGroup } from "@/types";
-import type { TargetWithHistory } from "@/app/trends/page";
+import type { TargetWithHistory } from "@/types";
 
 const GROUP_ICONS: Record<SpendGroup, typeof Home> = {
   income: TrendingUp,

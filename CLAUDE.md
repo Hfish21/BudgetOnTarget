@@ -14,6 +14,8 @@ Everything is in `frontend/`. There is no backend.
 ### Frontend (`frontend/`)
 - **Framework**: Next.js 16, React 19, TypeScript, Tailwind CSS 4, shadcn/ui
 - **Static export**: `next.config.ts` sets `output: "export"` — `pnpm build` produces `out/`
+- **Routing**: the marketing landing page is the site root (`src/app/page.tsx`); the budget app lives under `/app/*` (`src/app/app/`). The root layout holds only fonts and metadata — `StorageProvider`, `PrivacyProvider`, and `AppShell` mount in `src/app/app/layout.tsx`, so the landing page carries none of them. The six pre-`/app` URLs are redirect stubs kept for existing bookmarks and installed PWAs.
+- **Adding an app route**: create it under `src/app/app/`, and add it to `navItems` in `sidebar.tsx` and to `APP_SHELL` in `public/sw.js`
 - **API seam** (`src/lib/api.ts`): exports `api`, which is `localApi`. Components import `api` and call async methods; the asynchrony is deliberate, so the seam stays backend-shaped if a hosted mode ever returns.
 - **Local engine** (`src/lib/local-engine/`) — the entire application core:
   - `store.ts` — in-memory data store with CRUD, dirty tracking, subscriber pattern

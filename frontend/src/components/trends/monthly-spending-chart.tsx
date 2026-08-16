@@ -18,7 +18,7 @@ import { usePrivacy } from "@/components/privacy-provider";
 import { PrivateYAxisTick } from "@/components/charts/private-axis-tick";
 import { InfoTip } from "./info-tip";
 import type { LaneHistoryMonth, SpendGroup } from "@/types";
-import type { TargetWithHistory } from "@/app/trends/page";
+import type { TargetWithHistory } from "@/types";
 
 interface MonthlySpendingChartProps {
   data: Record<string, LaneHistoryMonth[]>;

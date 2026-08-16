@@ -24,7 +24,10 @@ BudgetOnTarget/
     ├── package.json
     ├── public/                  # manifest.webmanifest, sw.js, icons, logo.svg
     └── src/
-        ├── app/                 # Next.js App Router pages
+        ├── app/                 # Next.js App Router
+        │   ├── page.tsx         # landing page (site root)
+        │   ├── app/             # the budget app itself, at /app/*
+        │   └── <legacy>/        # redirect stubs for the pre-/app URLs
         ├── components/          # React components
         ├── hooks/
         ├── lib/
@@ -167,12 +170,24 @@ Two layers, both entirely local:
 
 | Route | Purpose |
 |---|---|
-| `/dashboard` | Monthly overview — net summary, cumulative chart, target cards grouped by lane |
-| `/trends` | Multi-month history — spending, net cash flow, lane scorecards, delta breakdown |
-| `/transactions` | Browse, filter, categorize, exclude |
-| `/import` | CSV upload and import history |
-| `/targets` | Create and edit targets |
-| `/settings` | Accounts, members, categories, rules, data portability |
+| `/` | Landing page — what the app is, how targets and lanes work. Static, no providers |
+| `/app/dashboard` | Monthly overview — net summary, cumulative chart, target cards grouped by lane |
+| `/app/trends` | Multi-month history — spending, net cash flow, lane scorecards, delta breakdown |
+| `/app/transactions` | Browse, filter, categorize, exclude |
+| `/app/import` | CSV upload and import history |
+| `/app/targets` | Create and edit targets |
+| `/app/settings` | Accounts, members, categories, rules, data portability |
+
+The root layout carries only fonts and metadata. `StorageProvider`,
+`PrivacyProvider`, and `AppShell` mount in `app/app/layout.tsx`, so the landing
+page renders as static HTML with no store, no IndexedDB read, and no wizard
+gating.
+
+The six pre-`/app` URLs (`/dashboard`, `/trends`, …) still resolve: each is a
+stub that client-side redirects into `/app/*`, preserving the query string.
+GitHub Pages serves static files with no server-side redirect available, and
+bookmarks plus already-installed PWAs still point at the old paths. Safe to
+delete once those URLs go quiet.
 
 **First run** is handled by a setup wizard (`components/wizard/`): CSV upload → field mapping → category review → target suggestions → done.
 
