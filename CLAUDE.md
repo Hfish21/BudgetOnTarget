@@ -30,8 +30,11 @@ Everything is in `frontend/`. There is no backend.
   - `local-api.ts` — the API surface components call
   - `file-io.ts` — File System Access API (Chromium) with fallback, IndexedDB auto-save
   - `types.ts` — TypeScript interfaces for the `.budget` JSON schema
-- **Storage provider** (`src/components/storage-provider.tsx`): React context managing file open/save, IndexedDB auto-persist (2s debounce), and a `dataVersion` counter components watch to re-fetch after store mutations
-- **PWA**: `public/manifest.webmanifest`, `public/sw.js` (stale-while-revalidate), icons in `public/`
+- **Google Drive backend** (`src/lib/drive/`) — optional cloud storage for the `.budget` file, so one canonical file is reachable from any machine. Still 100% browser-only: the browser talks straight to Google, no BudgetOnTarget server is ever in the path.
+  - `google-drive.ts` — Google Identity Services (implicit token flow, **no client secret**), the Google Picker as the "Open" dialog, and Drive REST for download/create/update. In-memory access token with silent refresh; conflict guard compares Drive `modifiedTime` before overwriting.
+  - `config.ts` — the OAuth Client ID + Picker API key. **These are public by design and committed** (there is no secret in the implicit flow; the API key is referrer-locked to `budgetontarget.com` + `localhost:3000` and to the Picker API). `NEXT_PUBLIC_GOOGLE_*` env vars override them for a fork. Uses the `drive.file` scope (app only sees files the user picks or that it creates). Google Cloud project: `budgetontarget`.
+- **Storage provider** (`src/components/storage-provider.tsx`): the storage state machine. Tracks a single canonical **location** (`none`/`local`/`drive`) surfaced in the sidebar, so the source of truth is never ambiguous. Open and Save each offer "This device" and "Google Drive" (see `layout/storage-controls.tsx`); choosing one makes it canonical and subsequent saves write back there. Also: IndexedDB auto-persist (2s debounce, content + location + Drive-ref/local-handle, never the token), Drive save-time `modifiedTime` conflict resolution, focus-triggered multi-device refresh (silent when clean, banner when there are local edits), and a `dataVersion` counter components watch to re-fetch after store mutations
+- **PWA**: `public/manifest.webmanifest`, `public/sw.js` (stale-while-revalidate; ignores cross-origin requests, so Google's scripts/API pass straight through), icons in `public/`
 
 ### `.budget` File Format
 Single JSON file (`version: 1`) containing all entities: accounts, members, categories, rules, targets, transactions, imports, tags. Integer IDs for internal references.

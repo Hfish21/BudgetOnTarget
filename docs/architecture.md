@@ -53,7 +53,7 @@ BudgetOnTarget/
 | `csv-parser-generic.ts` | Any bank, via user-supplied column mapping. Auto-detects headers and date format. |
 | `importer.ts` | Dedup by hash, auto-categorize, internal-transfer detection, pending overlay. |
 | `hasher.ts` | SHA-256 via the Web Crypto API. |
-| `file-io.ts` | File System Access API with a download fallback; IndexedDB auto-save. |
+| `file-io.ts` | File System Access API (reusable write-back handle) with a download fallback; IndexedDB auto-save; storage-location, local-handle, and Drive-ref persistence. |
 | `local-api.ts` | Assembles the modules above into the API surface components call. |
 
 ### The API seam
@@ -153,10 +153,15 @@ CSV file
 
 ## 6. Storage and Persistence
 
-Two layers, both entirely local:
+Three layers, all client-side:
 
-1. **IndexedDB auto-save** — `storage-provider.tsx` subscribes to the store and writes a serialized snapshot 2 seconds after the last change. This is what survives a page refresh.
-2. **`.budget` file** — an explicit save through the File System Access API (Chromium) or a download fallback. This is the durable copy the user owns and backs up.
+1. **IndexedDB auto-save** — `storage-provider.tsx` subscribes to the store and writes a serialized snapshot 2 seconds after the last change. This is what survives a page refresh. It also persists the *storage location* (below) — a small `{kind, name}` marker plus the Drive ref / local file handle — so a reload remembers where the canonical file lives. The Drive access token is never persisted.
+2. **`.budget` file — "This device"** — the File System Access API (Chromium) gives a reusable handle that "Save" writes back to silently; the handle is persisted in IndexedDB. Firefox/Safari fall back to a download with no reusable handle.
+3. **`.budget` file — "Google Drive" (optional)** — `lib/drive/google-drive.ts` opens/saves the same JSON straight to the user's Drive, so one canonical file follows them across machines. The browser authenticates with Google (implicit token flow, no client secret) and talks directly to the Drive REST API; no BudgetOnTarget server is ever in the path. Uses the `drive.file` scope (app sees only files the user picks or creates) and a short-lived in-memory access token with silent refresh. The Client ID + Picker API key in `lib/drive/config.ts` are public by design and committed (referrer-locked); `NEXT_PUBLIC_GOOGLE_*` env vars override them.
+
+**One canonical location.** `StorageProvider` tracks a single source of truth (`none` | `local` | `drive`), surfaced in the sidebar so it's never ambiguous. Open and Save each offer both destinations; choosing one makes it canonical, and subsequent saves write back there.
+
+**Multi-device sync (MVP).** When a Drive-backed tab regains focus (or becomes visible), it silently fetches the file's `modifiedTime`. If another device pushed a change and there are no local edits, it refreshes to the latest automatically; if there *are* local edits, it shows a "changed on another device" banner (Refresh / Keep mine). The save-time `modifiedTime` conflict guard is the backstop — a blocked save opens a modal (overwrite Drive / load theirs / cancel) rather than clobbering the newer copy.
 
 `StorageProvider` also exposes a `dataVersion` counter that increments on every store mutation. Components depend on it to re-fetch, since the store is mutable and outside React's rendering model.
 

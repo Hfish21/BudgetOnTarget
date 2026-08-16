@@ -40,6 +40,9 @@ frontend/src/
 ├── components/             # UI (shadcn/ui on Base UI, Tailwind CSS 4)
 └── lib/
     ├── api.ts              # the API seam — components call `api`; keep it async-shaped
+    ├── drive/              # OPTIONAL Google Drive backend (browser↔Google, no server)
+    │   ├── google-drive.ts     # GIS token flow (no secret) + Picker + Drive REST
+    │   └── config.ts           # public, committed OAuth Client ID + Picker API key
     └── local-engine/       # THE APP CORE:
         ├── store.ts            # in-memory data store, CRUD, dirty tracking
         ├── target-engine.ts    # budget assessments, cumulative tracking  ← money math
@@ -47,9 +50,15 @@ frontend/src/
         ├── categorizer.ts      # rule matching                             ← money math
         ├── csv-parser.ts       # USAA format
         ├── csv-parser-generic.ts # any-bank via column mapping
-        ├── file-io.ts          # File System Access API + IndexedDB
+        ├── file-io.ts          # FS Access API (reusable handle) + IndexedDB + location/handle/Drive-ref persistence
         └── types.ts            # the .budget JSON schema
 ```
+
+**Storage location model.** `storage-provider.tsx` tracks one canonical location — `none` | `local` | `drive` — shown in the sidebar so the source of truth is explicit. Open and Save (in `layout/storage-controls.tsx`) each offer **This device** and **Google Drive**; picking one makes it canonical. Local "This device" uses a persisted File System Access handle (Chromium) to write back silently; Drive writes back to the picked file.
+
+**Google Drive** is an optional storage target: the browser authenticates with Google (implicit token flow, no client secret), picks/creates a `.budget` file via the Google Picker, and reads/writes it with the Drive REST API using the `drive.file` scope. No data passes through any BudgetOnTarget server. The Client ID + API key in `drive/config.ts` are public by design and committed (referrer-locked); override with `NEXT_PUBLIC_GOOGLE_*`.
+
+**Multi-device sync (MVP).** A Drive-backed tab re-checks the file's `modifiedTime` on focus: refreshes silently if there are no local edits, else shows a Refresh / Keep-mine banner. A save blocked by a newer copy opens an overwrite / load-theirs / cancel modal.
 
 Full technical reference: [docs/architecture.md](docs/architecture.md).
 
