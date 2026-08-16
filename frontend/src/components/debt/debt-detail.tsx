@@ -30,7 +30,6 @@ function driftPhrase(drift: number | null): string {
 
 export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
   const [trajectory, setTrajectory] = useState<DebtTrajectory | null>(null);
-  const [loading, setLoading] = useState(true);
   const [extraDollars, setExtraDollars] = useState("0");
   const [scenario, setScenario] = useState<DebtScenario | null>(null);
 
@@ -45,7 +44,11 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
 
   useEffect(() => {
     let alive = true;
-    setLoading(true);
+    // Note: we intentionally do NOT clear `trajectory` or show a skeleton on
+    // refetch — that would unmount the inputs (stealing focus mid-typing) and
+    // flicker the chart. The stale trajectory stays visible until the new one
+    // arrives; the render guard below only shows a skeleton before the first
+    // load or when switching to a different card.
     api.debts
       .getTrajectory(debtId, futureSpendCents)
       .then((t) => {
@@ -60,9 +63,6 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
       })
       .catch(() => {
         /* non-critical */
-      })
-      .finally(() => {
-        if (alive) setLoading(false);
       });
     return () => {
       alive = false;
@@ -87,7 +87,9 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
     if (trajectory) runScenario(extraDollars);
   }, [trajectory, extraDollars, runScenario]);
 
-  if (loading || !trajectory) {
+  // Skeleton only before the first load or while switching to another card —
+  // never on an in-place refetch (typing a spend amount, toggling assumptions).
+  if (!trajectory || trajectory.debt_id !== debtId) {
     return <div className="h-64 animate-pulse rounded-xl bg-muted" />;
   }
 
