@@ -6,7 +6,7 @@ import { RuleList } from "@/components/settings/rule-list";
 import { MemberList } from "@/components/settings/member-list";
 import { AccountList } from "@/components/settings/account-list";
 import { DataPortability } from "@/components/settings/data-portability";
-import { FeatureRequest } from "@/components/settings/feature-request";
+import { Feedback } from "@/components/settings/feedback";
 import { Tag, ListFilter, Users, CreditCard, HardDrive, Lightbulb } from "lucide-react";
 
 export default function SettingsPage() {
@@ -68,7 +68,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="feedback" className="mt-6">
-          <FeatureRequest />
+          <Feedback />
         </TabsContent>
       </Tabs>
     </div>
