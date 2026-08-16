@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
+import { useStorage } from "@/components/storage-provider";
 import { DebtForm } from "@/components/debt/debt-form";
 import { DebtDetail } from "@/components/debt/debt-detail";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ export default function DebtPage() {
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const { dataVersion } = useStorage();
 
   const fetchDebts = useCallback(async () => {
     setLoading(true);
@@ -64,9 +66,11 @@ export default function DebtPage() {
     }
   }, []);
 
+  // Refetch on mount and whenever the store changes (e.g. opening a file, or
+  // categorizing a payment elsewhere) — dataVersion is the app's store-change signal.
   useEffect(() => {
     fetchDebts();
-  }, [fetchDebts]);
+  }, [fetchDebts, dataVersion]);
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this card? Your transactions are untouched.")) return;
@@ -225,7 +229,7 @@ export default function DebtPage() {
 
           {/* Detail for the selected card */}
           {selectedId != null && (
-            <DebtDetail debtId={selectedId} refreshKey={refreshKey} />
+            <DebtDetail debtId={selectedId} refreshKey={refreshKey + dataVersion} />
           )}
         </>
       )}
