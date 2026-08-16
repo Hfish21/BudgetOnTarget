@@ -1,0 +1,5 @@
+# Every change requires review from the repository owner before merge.
+# Combined with "Require review from Code Owners" branch protection, this
+# makes @Hfish21 the sole valid approver for outside contributors' PRs.
+# (Admins bypass this, so Hayden can still self-merge his own work.)
+* @Hfish21
