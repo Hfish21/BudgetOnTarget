@@ -1,0 +1,44 @@
+name: Bug report
+description: Report something that's broken or not working as expected
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! The more detail you can give, the faster it gets fixed.
+
+        **Please don't include any personal financial data** (real transactions, account numbers, balances). This is a public issue.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Describe the bug — what went wrong?
+      placeholder: e.g. "Importing a Chase CSV shows every amount as $0.00."
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What did you do right before it happened?
+      placeholder: |
+        1. Go to Import
+        2. Upload the file
+        3. See the wrong amounts
+    validations:
+      required: false
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+      placeholder: e.g. "The amounts should match the CSV."
+    validations:
+      required: false
+  - type: textarea
+    id: environment
+    attributes:
+      label: Browser & device
+      description: Pre-filled automatically when reporting from the app. Edit if needed.
+    validations:
+      required: false
