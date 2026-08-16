@@ -21,12 +21,12 @@ import { usePrivacy } from "@/components/privacy-provider";
 import { useStorage } from "@/components/storage-provider";
 
 const navItems = [
-  { href: "/dashboard", label: "Monthly", icon: LayoutDashboard },
-  { href: "/trends", label: "Trends", icon: TrendingUp },
-  { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
-  { href: "/import", label: "Import", icon: Upload },
-  { href: "/targets", label: "Targets", icon: Target },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/app/dashboard", label: "Monthly", icon: LayoutDashboard },
+  { href: "/app/trends", label: "Trends", icon: TrendingUp },
+  { href: "/app/transactions", label: "Transactions", icon: ArrowLeftRight },
+  { href: "/app/import", label: "Import", icon: Upload },
+  { href: "/app/targets", label: "Targets", icon: Target },
+  { href: "/app/settings", label: "Settings", icon: Settings },
 ];
 
 export function Sidebar() {
@@ -41,7 +41,8 @@ export function Sidebar() {
         <h1 className="text-lg font-semibold tracking-tight">BudgetOnTarget</h1>
       </div>
 
-      {(pathname.startsWith("/dashboard") || pathname.startsWith("/transactions")) && (
+      {(pathname.startsWith("/app/dashboard") ||
+        pathname.startsWith("/app/transactions")) && (
         <div className="px-3 pb-4">
           <MonthSelector />
         </div>

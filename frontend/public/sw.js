@@ -1,13 +1,13 @@
-const CACHE_VERSION = "bot-v2";
+const CACHE_VERSION = "bot-v3";
 
 const APP_SHELL = [
   "/",
-  "/dashboard",
-  "/transactions",
-  "/import",
-  "/targets",
-  "/settings",
-  "/trends",
+  "/app/dashboard",
+  "/app/transactions",
+  "/app/import",
+  "/app/targets",
+  "/app/settings",
+  "/app/trends",
   "/logo.svg",
 ];
 
@@ -72,7 +72,7 @@ self.addEventListener("fetch", (event) => {
           const base = self.location.pathname.replace(/\/sw\.js$/, "");
           return (
             (await caches.match(request)) ??
-            (await caches.match(`${base}/dashboard`)) ??
+            (await caches.match(`${base}/app/dashboard`)) ??
             new Response("Offline", { status: 503 })
           );
         })

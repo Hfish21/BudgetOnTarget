@@ -24,7 +24,7 @@ import { usePrivacy } from "@/components/privacy-provider";
 import { Money } from "@/components/money";
 import { PrivateYAxisTick } from "@/components/charts/private-axis-tick";
 import type { SpendGroup, Transaction } from "@/types";
-import type { TargetWithHistory } from "@/app/trends/page";
+import type { TargetWithHistory } from "@/types";
 
 interface DeltaBreakdownDialogProps {
   lane: SpendGroup;
