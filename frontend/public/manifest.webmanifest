@@ -3,6 +3,7 @@
   "short_name": "Budget",
   "description": "Personal household spending dashboard",
   "start_url": "./app/dashboard",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#191919",
   "theme_color": "#10B981",
