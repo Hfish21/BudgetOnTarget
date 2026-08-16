@@ -90,22 +90,64 @@ Deduplication is automatic — re-importing the same file or an overlapping date
 
 ## Running Locally
 
-Requires **Node.js 22+** and **pnpm**.
+The whole app is a static Next.js frontend. **There is no backend, no database, and nothing to configure** — you clone it and run one dev server. Setup takes about two minutes.
+
+### Prerequisites
+
+You need exactly two things: **Node.js 22** and **pnpm**. The repo pins both versions for you, so you don't have to guess.
+
+**1. Install Node.js 22.** If you use [nvm](https://github.com/nvm-sh/nvm) (recommended) or [fnm](https://github.com/Schniz/fnm), the repo's `.nvmrc` picks the right version automatically — see step 2 below. Otherwise, download Node 22 LTS from [nodejs.org](https://nodejs.org).
+
+**2. You do _not_ need to install pnpm separately.** pnpm ships with Node via [Corepack](https://nodejs.org/api/corepack.html). One command turns it on and locks it to the exact version this repo expects:
 
 ```bash
+corepack enable
+```
+
+That's the single step most people miss — it's why `pnpm: command not found` happens.
+
+### Setup
+
+```bash
+# 1. Clone
 git clone https://github.com/Hfish21/BudgetOnTarget.git
-cd BudgetOnTarget/frontend
+cd BudgetOnTarget
+
+# 2. Use the pinned Node version (skip if not using nvm/fnm)
+nvm use                 # or: fnm use  — reads .nvmrc, installs 22 if needed
+
+# 3. Enable pnpm (once per machine)
+corepack enable
+
+# 4. Install dependencies and start the dev server
+cd frontend
 pnpm install
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). That's the whole setup — there is nothing else to run.
+Open **[http://localhost:3000](http://localhost:3000)**. That's it — you're running the full app with hot reload. There is nothing else to start.
+
+> **Note:** The repo may contain a leftover `backend/` folder from an earlier full-stack version. **Ignore it** — it is not used, not tracked in git, and nothing in it needs to run. The entire app lives in `frontend/`.
+
+### Other commands
+
+Run these from `frontend/`:
 
 ```bash
-pnpm build      # static export → frontend/out/
+pnpm build      # static export → frontend/out/ (also the strictest type check)
 pnpm preview    # serve the built output locally
-pnpm lint
+pnpm lint       # ESLint
 ```
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| `pnpm: command not found` | Run `corepack enable` (see Prerequisites). It ships with Node — no separate install needed. |
+| `Unsupported engine` / wrong Node version | You're not on Node 22. Run `nvm use` (or install Node 22 from [nodejs.org](https://nodejs.org)). |
+| `corepack: command not found` | Your Node is too old or Corepack is disabled. Install Node 22 LTS from [nodejs.org](https://nodejs.org), then retry. |
+| Port 3000 already in use | Stop the other process, or run `pnpm dev -- -p 3001` and open port 3001. |
+| Lockfile / install errors | Delete `frontend/node_modules` and run `pnpm install` again. |
 
 ## Architecture
 
@@ -153,13 +195,15 @@ See [`docs/architecture.md`](docs/architecture.md) for the full technical refere
 
 ## Contributing
 
-Contributions are welcome:
+Contributions are welcome. The short version:
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/my-feature`)
-3. Make your changes
-4. Verify with `cd frontend && pnpm build && pnpm lint`
-5. Submit a pull request
+1. **Fork** the repository and clone your fork
+2. Follow [Running Locally](#running-locally) to get set up
+3. Create a feature branch (`git checkout -b feature/my-feature`)
+4. Make your changes and verify with `cd frontend && pnpm lint && pnpm build`
+5. Push to your fork and open a **pull request** against `main`
+
+CI (lint + build) runs automatically on every PR, and `main` is protected — a maintainer reviews and approves before anything merges. Full details, project layout, and conventions are in **[CONTRIBUTING.md](CONTRIBUTING.md)**.
 
 ### Areas for Contribution
 
