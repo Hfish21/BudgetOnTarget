@@ -28,7 +28,7 @@ import {
   Cell,
 } from "recharts";
 import { api } from "@/lib/api";
-import { cn, formatCents } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { usePrivacy } from "@/components/privacy-provider";
 import { PrivateYAxisTick } from "@/components/charts/private-axis-tick";
 import { Money } from "@/components/money";

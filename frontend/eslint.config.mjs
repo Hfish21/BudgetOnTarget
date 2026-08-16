@@ -10,6 +10,10 @@ const eslintConfig = defineConfig([
       // Data fetching in useEffect is a standard pattern for client components
       // without TanStack Query. The rule is too strict for this use case.
       "react-hooks/set-state-in-effect": "off",
+
+      // `output: "export"` disables the Next image optimizer, so <Image /> buys
+      // nothing here — and the only images in the app are the inline SVG logo.
+      "@next/next/no-img-element": "off",
     },
   },
   // Override default ignores of eslint-config-next.

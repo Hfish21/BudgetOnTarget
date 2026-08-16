@@ -15,7 +15,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Trash2, Plus, RefreshCw, ListFilter, PackageOpen } from "lucide-react";
+import { Trash2, Plus, RefreshCw, PackageOpen } from "lucide-react";
 import type { CategoryRule, Category } from "@/types";
 
 export function RuleList() {

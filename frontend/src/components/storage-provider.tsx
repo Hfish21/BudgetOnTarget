@@ -9,8 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { setActiveApi, remoteApi } from "@/lib/api";
-import { localApi, getStore } from "@/lib/local-engine";
+import { getStore } from "@/lib/local-engine";
 import {
   autoSave,
   loadAutoSave,
@@ -18,11 +17,7 @@ import {
   saveBudgetFile,
 } from "@/lib/local-engine/file-io";
 
-type StorageMode = "remote" | "local";
-
 interface StorageContextValue {
-  mode: StorageMode;
-  setMode: (m: StorageMode) => void;
   dirty: boolean;
   loading: boolean;
   fileLoaded: boolean;
@@ -42,7 +37,6 @@ export function useStorage() {
 }
 
 export function StorageProvider({ children }: { children: ReactNode }) {
-  const [mode, setModeRaw] = useState<StorageMode>("local");
   const [dirty, setDirty] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fileLoaded, setFileLoaded] = useState(false);
@@ -50,19 +44,6 @@ export function StorageProvider({ children }: { children: ReactNode }) {
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const store = getStore();
-
-  const setMode = useCallback(
-    (m: StorageMode) => {
-      setModeRaw(m);
-      setActiveApi(m === "remote" ? remoteApi : localApi);
-    },
-    []
-  );
-
-  // Set initial API
-  useEffect(() => {
-    setActiveApi(mode === "remote" ? remoteApi : localApi);
-  }, [mode]);
 
   useEffect(() => {
     const unsub = store.subscribe(() => {
@@ -99,8 +80,6 @@ export function StorageProvider({ children }: { children: ReactNode }) {
       store.markClean();
       setDirty(false);
       setFileLoaded(true);
-      setModeRaw("local");
-      setActiveApi(localApi);
     }
   }, [store]);
 
@@ -116,8 +95,6 @@ export function StorageProvider({ children }: { children: ReactNode }) {
     store.markClean();
     setDirty(false);
     setFileLoaded(true);
-    setModeRaw("local");
-    setActiveApi(localApi);
   }, [store]);
 
   const completeSetup = useCallback(() => {
@@ -128,8 +105,6 @@ export function StorageProvider({ children }: { children: ReactNode }) {
   return (
     <StorageContext.Provider
       value={{
-        mode,
-        setMode,
         dirty,
         loading,
         fileLoaded,

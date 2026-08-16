@@ -1,19 +1,22 @@
-const CACHE_VERSION = "bot-v1";
+const CACHE_VERSION = "bot-v2";
+
+const APP_SHELL = [
+  "/",
+  "/dashboard",
+  "/transactions",
+  "/import",
+  "/targets",
+  "/settings",
+  "/trends",
+  "/logo.svg",
+];
 
 self.addEventListener("install", (event) => {
   const base = self.location.pathname.replace(/\/sw\.js$/, "");
-  const precacheUrls = [
-    `${base}/`,
-    `${base}/dashboard`,
-    `${base}/transactions`,
-    `${base}/import`,
-    `${base}/targets`,
-    `${base}/settings`,
-    `${base}/trends`,
-    `${base}/logo.svg`,
-  ];
   event.waitUntil(
-    caches.open(CACHE_VERSION).then((cache) => cache.addAll(precacheUrls))
+    caches
+      .open(CACHE_VERSION)
+      .then((cache) => cache.addAll(APP_SHELL.map((p) => `${base}${p}`)))
   );
   self.skipWaiting();
 });
@@ -22,14 +25,25 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
-        keys
-          .filter((key) => key !== CACHE_VERSION)
-          .map((key) => caches.delete(key))
+        keys.filter((key) => key !== CACHE_VERSION).map((key) => caches.delete(key))
       )
     )
   );
   self.clients.claim();
 });
+
+// Build output is content-hashed, so these URLs are immutable: if the path
+// still resolves, the bytes behind it never changed.
+function isImmutableAsset(url) {
+  return url.pathname.includes("/_next/static/");
+}
+
+function isCacheableAsset(url) {
+  return (
+    isImmutableAsset(url) ||
+    /\.(svg|png|ico|woff2|webmanifest)$/.test(url.pathname)
+  );
+}
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
@@ -37,43 +51,64 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   if (!request.url.startsWith(self.location.origin)) return;
 
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) {
-        fetch(request).then((response) => {
+  const url = new URL(request.url);
+
+  // Documents are network-first. Serving a stale HTML document is not a
+  // harmless optimization: its <script> tags name content-hashed chunks that
+  // the next deploy deletes, so the cached page loads into a ChunkLoadError
+  // and renders nothing. Fresh HTML always wins when the network is reachable;
+  // the cache is strictly an offline fallback.
+  if (request.destination === "document") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
           if (response.ok) {
             const clone = response.clone();
             caches.open(CACHE_VERSION).then((cache) => cache.put(request, clone));
           }
-        }).catch(() => {});
+          return response;
+        })
+        .catch(async () => {
+          const base = self.location.pathname.replace(/\/sw\.js$/, "");
+          return (
+            (await caches.match(request)) ??
+            (await caches.match(`${base}/dashboard`)) ??
+            new Response("Offline", { status: 503 })
+          );
+        })
+    );
+    return;
+  }
+
+  // Hashed assets are safe to serve from cache indefinitely.
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      if (cached) {
+        // Immutable URLs never need revalidating; anything else might.
+        if (!isImmutableAsset(url)) {
+          fetch(request)
+            .then((response) => {
+              if (response.ok) {
+                const clone = response.clone();
+                caches
+                  .open(CACHE_VERSION)
+                  .then((cache) => cache.put(request, clone));
+              }
+            })
+            .catch(() => {});
+        }
         return cached;
       }
 
-      return fetch(request).then((response) => {
-        if (!response.ok) return response;
-
-        const url = new URL(request.url);
-        const shouldCache =
-          request.destination === "document" ||
-          url.pathname.includes("/_next/static/") ||
-          url.pathname.endsWith(".svg") ||
-          url.pathname.endsWith(".png") ||
-          url.pathname.endsWith(".ico") ||
-          url.pathname.endsWith(".woff2");
-
-        if (shouldCache) {
-          const clone = response.clone();
-          caches.open(CACHE_VERSION).then((cache) => cache.put(request, clone));
-        }
-
-        return response;
-      }).catch(() => {
-        if (request.destination === "document") {
-          const base = self.location.pathname.replace(/\/sw\.js$/, "");
-          return caches.match(`${base}/dashboard`);
-        }
-        return new Response("Offline", { status: 503 });
-      });
+      return fetch(request)
+        .then((response) => {
+          if (response.ok && isCacheableAsset(url)) {
+            const clone = response.clone();
+            caches.open(CACHE_VERSION).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => new Response("Offline", { status: 503 }));
     })
   );
 });

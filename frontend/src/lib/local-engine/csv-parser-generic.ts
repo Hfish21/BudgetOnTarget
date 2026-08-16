@@ -133,7 +133,6 @@ function parseDateToISO(
 
   if (format === "auto") {
     const m = parseInt(parts[0], 10);
-    const d = parseInt(parts[1], 10);
     if (m > 12) {
       day = parts[0];
       month = parts[1];
@@ -209,8 +208,7 @@ export function parseGenericCsv(
 }
 
 export function autoDetectConfig(
-  fileContent: string,
-  accountType: AccountType
+  fileContent: string
 ): { headers: string[]; sampleRows: Record<string, string>[]; config: FieldMappingConfig } {
   const rows = parseCsvRows(fileContent);
   const headers =
