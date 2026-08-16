@@ -22,6 +22,7 @@ Everything is in `frontend/`. There is no backend.
 - **Local engine** (`src/lib/local-engine/`) — the entire application core:
   - `store.ts` — in-memory data store with CRUD, dirty tracking, subscriber pattern
   - `target-engine.ts` — budget assessments, cumulative daily tracking, lane/target history
+  - `debt-engine.ts` — Debt Trajectory: credit-card payoff projection from a single-statement anchor, on-track/ahead/behind status, and extra-payment scenarios (pure money math)
   - `categorizer.ts` — rule matching (substring/regex), bulk recategorization
   - `csv-parser.ts` — USAA CSV format parser with sign normalization
   - `csv-parser-generic.ts` — any-bank parser driven by a user-supplied column mapping
@@ -37,7 +38,7 @@ Everything is in `frontend/`. There is no backend.
 - **PWA**: `public/manifest.webmanifest`, `public/sw.js` (stale-while-revalidate; ignores cross-origin requests, so Google's scripts/API pass straight through), icons in `public/`
 
 ### `.budget` File Format
-Single JSON file (`version: 1`) containing all entities: accounts, members, categories, rules, targets, transactions, imports, tags. Integer IDs for internal references.
+Single JSON file (`version: 2`) containing all entities: accounts, members, categories, rules, targets, transactions, imports, tags, debts. Integer IDs for internal references. (`debts`, for Debt Trajectory, was added in v2; v1 files still open — `load()` backfills `debts: []`.)
 
 **Changing this schema requires bumping `CURRENT_VERSION` in `store.ts` and handling the old shape in `load()`.** Existing files in the wild must keep opening — `load()` already backfills `is_excluded` and `is_pending` for files that predate them; follow that pattern.
 

@@ -13,9 +13,13 @@ import type {
   ImportRecord,
   Account,
   HouseholdMember,
+  Debt,
 } from "@/types";
+import type { BudgetDebt } from "./types";
+import type { DebtTrajectory, DebtScenario } from "./debt-engine";
 
 import { BudgetStore } from "./store";
+import { assessDebt, scenarioDebt } from "./debt-engine";
 import {
   assessAllTargets,
   assessTarget,
@@ -85,6 +89,28 @@ const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
+
+function debtToResponse(d: BudgetDebt): Debt {
+  return {
+    id: d.id,
+    name: d.name,
+    account_id: d.account_id,
+    account_name: d.account_id
+      ? (store.accountById(d.account_id)?.name ?? null)
+      : null,
+    anchor_date: d.anchor_date,
+    anchor_balance_cents: d.anchor_balance_cents,
+    anchor_balance_display: formatCents(d.anchor_balance_cents),
+    apr_bps: d.apr_bps,
+    apr_percent: d.apr_bps / 100,
+    min_payment_cents: d.min_payment_cents,
+    min_payment_display: formatCents(d.min_payment_cents),
+    extra_payment_cents: d.extra_payment_cents,
+    extra_payment_display: formatCents(d.extra_payment_cents),
+    payment_category_ids: d.payment_category_ids,
+    is_active: d.is_active,
+  };
+}
 
 export const localApi = {
   dashboard: {
@@ -596,6 +622,65 @@ export const localApi = {
 
     delete: async (id: number): Promise<void> => {
       if (!store.deleteTarget(id)) throw new Error("Target not found");
+    },
+  },
+
+  debts: {
+    list: async (): Promise<Debt[]> => {
+      return store.debts.map(debtToResponse);
+    },
+
+    create: async (body: {
+      name: string;
+      account_id: number | null;
+      anchor_date: string;
+      anchor_balance_cents: number;
+      apr_bps: number;
+      min_payment_cents: number;
+      extra_payment_cents: number;
+      payment_category_ids: number[];
+      is_active: boolean;
+    }): Promise<Debt> => {
+      const d = store.addDebt(body);
+      return debtToResponse(d);
+    },
+
+    update: async (
+      id: number,
+      body: {
+        name: string;
+        account_id: number | null;
+        anchor_date: string;
+        anchor_balance_cents: number;
+        apr_bps: number;
+        min_payment_cents: number;
+        extra_payment_cents: number;
+        payment_category_ids: number[];
+        is_active: boolean;
+      }
+    ): Promise<Debt> => {
+      const d = store.updateDebt(id, body);
+      if (!d) throw new Error("Debt not found");
+      return debtToResponse(d);
+    },
+
+    delete: async (id: number): Promise<void> => {
+      if (!store.deleteDebt(id)) throw new Error("Debt not found");
+    },
+
+    getTrajectory: async (id: number): Promise<DebtTrajectory> => {
+      const debt = store.debtById(id);
+      if (!debt) throw new Error("Debt not found");
+      return assessDebt(store, debt);
+    },
+
+    getScenario: async (
+      id: number,
+      extraCents: number
+    ): Promise<DebtScenario> => {
+      const debt = store.debtById(id);
+      if (!debt) throw new Error("Debt not found");
+      return scenarioDebt(store, debt, extraCents);
     },
   },
 

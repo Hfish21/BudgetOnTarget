@@ -93,6 +93,44 @@ export interface BudgetTag {
   created_at: string;
 }
 
+/**
+ * A credit card (or other revolving debt) the household is paying off, for the
+ * Debt Trajectory feature.
+ *
+ * We deliberately do NOT parse statements. The user reads the numbers off a
+ * single statement (the "anchor") and we project the payoff forward from there,
+ * treating the anchor balance as a fixed amount to pay down — new purchases on
+ * the card are intentionally ignored (re-anchoring is the correction path).
+ *
+ * Which transactions count as payments is decided by the existing category
+ * system: any transaction in one of `payment_category_ids` (dated on/after the
+ * anchor) is summed, by month, as a payment. Payments are usually internal
+ * transfers, so — unlike the target engine — the debt engine does NOT filter
+ * out `is_internal_transfer` rows.
+ */
+export interface BudgetDebt {
+  id: number;
+  name: string;
+  account_id: number | null; // optional link to a BudgetAccount of type "credit"
+
+  // Single-statement anchor — the core input assumption.
+  anchor_date: string; // "YYYY-MM-DD" — the statement date the balance was read
+  anchor_balance_cents: number; // balance OWED at anchor_date; positive = owed
+
+  // Terms.
+  apr_bps: number; // APR in basis points (2499 = 24.99%); integer, no float drift
+  min_payment_cents: number; // fixed minimum monthly payment
+
+  // The committed plan: the baseline "on track" trajectory is min + extra/month.
+  extra_payment_cents: number;
+
+  // Which categories' transactions are payments toward this card.
+  payment_category_ids: number[];
+
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface BudgetFile {
   version: number;
   exported_at: string;
@@ -105,4 +143,5 @@ export interface BudgetFile {
   transactions: BudgetTransaction[];
   csv_imports: BudgetCsvImport[];
   tags: BudgetTag[];
+  debts: BudgetDebt[];
 }

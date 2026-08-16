@@ -8,9 +8,13 @@ import type {
   BudgetTransaction,
   BudgetCsvImport,
   BudgetTag,
+  BudgetDebt,
 } from "./types";
 
-const CURRENT_VERSION = 1;
+// v2 (2026-08): added `debts` for the Debt Trajectory feature. A v1 file opens
+// cleanly (load() backfills `debts: []`); once saved as v2 it will not reopen in
+// a pre-v2 build, the same one-way door every schema bump here creates.
+const CURRENT_VERSION = 2;
 
 function emptyFile(): BudgetFile {
   return {
@@ -25,6 +29,7 @@ function emptyFile(): BudgetFile {
     transactions: [],
     csv_imports: [],
     tags: [],
+    debts: [],
   };
 }
 
@@ -37,6 +42,7 @@ export class BudgetStore {
   transactions: BudgetTransaction[] = [];
   csvImports: BudgetCsvImport[] = [];
   tags: BudgetTag[] = [];
+  debts: BudgetDebt[] = [];
 
   private _dirty = false;
   private _listeners: Set<() => void> = new Set();
@@ -77,6 +83,8 @@ export class BudgetStore {
     }));
     this.csvImports = [...file.csv_imports];
     this.tags = [...file.tags];
+    // Backfill for v1 files that predate the Debt Trajectory feature.
+    this.debts = file.debts != null ? [...file.debts] : [];
     this._dirty = false;
     this._notify();
   }
@@ -94,6 +102,7 @@ export class BudgetStore {
       transactions: this.transactions,
       csv_imports: this.csvImports,
       tags: this.tags,
+      debts: this.debts,
     };
   }
 
@@ -125,6 +134,10 @@ export class BudgetStore {
 
   targetById(id: number): BudgetTarget | undefined {
     return this.targets.find((t) => t.id === id);
+  }
+
+  debtById(id: number): BudgetDebt | undefined {
+    return this.debts.find((d) => d.id === id);
   }
 
   memberByName(name: string): BudgetHouseholdMember | undefined {
@@ -184,6 +197,14 @@ export class BudgetStore {
     this.categories.splice(idx, 1);
     for (const txn of this.transactions) {
       if (txn.category_id === id) txn.category_id = null;
+    }
+    // A deleted category must also stop counting as a debt payment source.
+    for (const debt of this.debts) {
+      if (debt.payment_category_ids.includes(id)) {
+        debt.payment_category_ids = debt.payment_category_ids.filter(
+          (cid) => cid !== id
+        );
+      }
     }
     this._notify();
     return true;
@@ -248,6 +269,35 @@ export class BudgetStore {
     const idx = this.targets.findIndex((t) => t.id === id);
     if (idx === -1) return false;
     this.targets.splice(idx, 1);
+    this._notify();
+    return true;
+  }
+
+  // --- CRUD: Debts ---
+
+  addDebt(data: Omit<BudgetDebt, "id" | "created_at">): BudgetDebt {
+    const debt: BudgetDebt = {
+      ...data,
+      id: this._nextId(this.debts),
+      created_at: new Date().toISOString(),
+    };
+    this.debts.push(debt);
+    this._notify();
+    return debt;
+  }
+
+  updateDebt(id: number, data: Partial<BudgetDebt>): BudgetDebt | undefined {
+    const debt = this.debtById(id);
+    if (!debt) return undefined;
+    Object.assign(debt, data);
+    this._notify();
+    return debt;
+  }
+
+  deleteDebt(id: number): boolean {
+    const idx = this.debts.findIndex((d) => d.id === id);
+    if (idx === -1) return false;
+    this.debts.splice(idx, 1);
     this._notify();
     return true;
   }

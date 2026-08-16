@@ -1,4 +1,4 @@
-const CACHE_VERSION = "bot-v4";
+const CACHE_VERSION = "bot-v5";
 
 const APP_SHELL = [
   "/",
@@ -6,6 +6,7 @@ const APP_SHELL = [
   "/app/transactions",
   "/app/import",
   "/app/targets",
+  "/app/debt",
   "/app/settings",
   "/app/trends",
   "/logo.svg",

@@ -189,6 +189,35 @@ export interface HouseholdMember {
   name: string;
 }
 
+/** A credit card / debt being paid off, as the Debt Trajectory page configures it. */
+export interface Debt {
+  id: number;
+  name: string;
+  account_id: number | null;
+  account_name: string | null;
+  anchor_date: string;
+  anchor_balance_cents: number;
+  anchor_balance_display: string;
+  apr_bps: number;
+  apr_percent: number;
+  min_payment_cents: number;
+  min_payment_display: string;
+  extra_payment_cents: number;
+  extra_payment_display: string;
+  payment_category_ids: number[];
+  is_active: boolean;
+}
+
+// The trajectory/scenario math shapes live with the engine — re-exported here so
+// components keep importing everything they need from "@/types".
+export type {
+  DebtStatus,
+  DebtTrajectory,
+  DebtScenario,
+  DebtMonthPoint,
+  DebtMonthHistory,
+} from "@/lib/local-engine/debt-engine";
+
 /** A target paired with its month-by-month history, as the Trends page charts it. */
 export interface TargetWithHistory {
   id: number;

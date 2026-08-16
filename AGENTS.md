@@ -46,6 +46,7 @@ frontend/src/
     └── local-engine/       # THE APP CORE:
         ├── store.ts            # in-memory data store, CRUD, dirty tracking
         ├── target-engine.ts    # budget assessments, cumulative tracking  ← money math
+        ├── debt-engine.ts      # credit-card payoff projection (Debt Trajectory) ← money math
         ├── importer.ts         # dedup, auto-categorize, transfers, pending ← money math
         ├── categorizer.ts      # rule matching                             ← money math
         ├── csv-parser.ts       # USAA format
@@ -65,10 +66,10 @@ Full technical reference: [docs/architecture.md](docs/architecture.md).
 ## Guardrails — read before writing code
 
 - **NEVER commit or push `.budget` or `.db` files.** They contain real financial data and are gitignored. Do not add real transaction exports as fixtures.
-- **`target-engine.ts`, `importer.ts`, and `categorizer.ts` do real money math with zero test coverage.** Change them carefully; adding tests alongside is the highest-value contribution.
-- **Changing the `.budget` schema requires bumping `CURRENT_VERSION` in `store.ts`** and handling the old shape in `load()`, or you break every existing user's saved file. `load()` already backfills older fields — follow that pattern.
-- **All money is stored as integer cents.** Never introduce floating-point dollar amounts.
-- **Adding an app route** means creating it under `src/app/app/`, adding it to `navItems` in `sidebar.tsx`, and adding it to `APP_SHELL` in `public/sw.js`.
+- **`target-engine.ts`, `debt-engine.ts`, `importer.ts`, and `categorizer.ts` do real money math with zero test coverage.** Change them carefully; adding tests alongside is the highest-value contribution.
+- **Changing the `.budget` schema requires bumping `CURRENT_VERSION` in `store.ts`** and handling the old shape in `load()`, or you break every existing user's saved file. `load()` already backfills older fields — follow that pattern. (Schema is at `version: 2` since the `debts` array was added.)
+- **All money is stored as integer cents.** Never introduce floating-point dollar amounts. (APR is stored as integer basis points.)
+- **Adding an app route** means creating it under `src/app/app/`, adding it to `navItems` in `sidebar.tsx`, to `DRAWER_NAV`/`MORE_ROUTES` in `mobile-chrome.tsx`, and to `APP_SHELL` (bump `CACHE_VERSION`) in `public/sw.js`.
 - **Do not add a backend, server, database, or network call.** The privacy guarantee is that nothing leaves the browser. Keep it that way.
 
 ## Contribution workflow

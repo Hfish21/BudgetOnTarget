@@ -113,6 +113,55 @@ export function getGroupLabel(group: string): string {
   }
 }
 
+// Debt Trajectory uses its own three-state vocabulary — ahead / on track /
+// behind — mapped to a green / blue / red palette so "on track" reads as its
+// own good-but-not-ahead state rather than borrowing the target yellow.
+export function getDebtStatusLabel(status: string): string {
+  switch (status) {
+    case "ahead":
+      return "Ahead of plan";
+    case "on_track":
+      return "On track";
+    case "behind":
+      return "Behind plan";
+    default:
+      return "Unknown";
+  }
+}
+
+export function getDebtStatusBgColor(status: string): string {
+  switch (status) {
+    case "ahead":
+      return "bg-emerald-500";
+    case "on_track":
+      return "bg-sky-500";
+    case "behind":
+      return "bg-red-500";
+    default:
+      return "bg-gray-400";
+  }
+}
+
+export function getDebtStatusTextColor(status: string): string {
+  switch (status) {
+    case "ahead":
+      return "text-emerald-600 dark:text-emerald-400";
+    case "on_track":
+      return "text-sky-600 dark:text-sky-400";
+    case "behind":
+      return "text-red-600 dark:text-red-400";
+    default:
+      return "text-muted-foreground";
+  }
+}
+
+/** Hex for the debt-status lines/markers on charts. */
+export const DEBT_STATUS_HEX: Record<string, string> = {
+  ahead: "#10b981", // emerald-500
+  on_track: "#0ea5e9", // sky-500
+  behind: "#ef4444", // red-500
+};
+
 export function getStatusBorderColor(status: string): string {
   switch (status) {
     case "on_target":

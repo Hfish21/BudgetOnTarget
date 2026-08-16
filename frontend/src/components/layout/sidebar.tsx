@@ -8,6 +8,7 @@ import {
   ArrowLeftRight,
   Upload,
   Target,
+  CreditCard,
   Settings,
   Eye,
   EyeOff,
@@ -23,6 +24,7 @@ const navItems = [
   { href: "/app/transactions", label: "Transactions", icon: ArrowLeftRight },
   { href: "/app/import", label: "Import", icon: Upload },
   { href: "/app/targets", label: "Targets", icon: Target },
+  { href: "/app/debt", label: "Debt Trajectory", icon: CreditCard },
   { href: "/app/settings", label: "Settings", icon: Settings },
 ];
 
