@@ -239,6 +239,12 @@ export interface DebtMonthHistory {
   status: DebtStatus;
 }
 
+export interface DebtScenarioPoint {
+  month_key: string;
+  label: string;
+  balance: number; // cents
+}
+
 export interface DebtScenario {
   extra_cents: number;
   monthly_payment_cents: number; // min + extra
@@ -249,6 +255,8 @@ export interface DebtScenario {
   total_interest_cents: number | null;
   interest_saved_cents: number; // vs minimum-only, same spend assumption
   never_pays_off: boolean;
+  /** Balance from now to payoff under this scenario, for plotting on the chart. */
+  curve: DebtScenarioPoint[];
 }
 
 export interface DebtTrajectory {
@@ -513,6 +521,17 @@ export function scenarioDebt(
   const sim = simulatePayoff(currentBalance, r, payment, futureSpend);
   const minSim = simulatePayoff(currentBalance, r, debt.min_payment_cents, futureSpend);
 
+  // Balance curve from now to payoff under this scenario (for the chart).
+  const curveMap = new Map<string, number>();
+  fillForward(currentBalance, startYM, r, payment, futureSpend, curveMap);
+  const curve: DebtScenarioPoint[] = [...curveMap.entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([month_key, balance]) => ({
+      month_key,
+      label: monthLabel(parseYM(month_key)),
+      balance,
+    }));
+
   const payoffYM = sim.months != null ? addMonths(startYM, sim.months) : null;
   const interestSaved =
     !minSim.neverPaysOff &&
@@ -532,5 +551,6 @@ export function scenarioDebt(
     total_interest_cents: sim.totalInterest,
     interest_saved_cents: interestSaved,
     never_pays_off: sim.neverPaysOff,
+    curve,
   };
 }

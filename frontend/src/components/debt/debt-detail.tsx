@@ -105,6 +105,13 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
         ? `Projected payoff ${t.projected_payoff_label}`
         : "Projected payoff — enter your payments to see it";
 
+  // The scenario line is drawn only when the explored payment differs from the
+  // current plan (min + configured extra) and actually pays off.
+  const planPayment = t.min_payment_cents + t.extra_payment_cents;
+  const scenarioAhead = scenario ? scenario.monthly_payment_cents > planPayment : true;
+  const showScenarioLine =
+    !!scenario && !scenario.never_pays_off && scenario.monthly_payment_cents !== planPayment;
+
   return (
     <div className="space-y-6">
       {/* Status headline */}
@@ -235,7 +242,21 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
       {/* Trajectory chart */}
       <div className="rounded-xl border border-border bg-card p-5">
         <p className="mb-4 text-sm font-semibold">Balance over time</p>
-        <DebtTrajectoryChart trajectory={t} />
+        <DebtTrajectoryChart
+          trajectory={t}
+          scenarioCurve={showScenarioLine ? scenario!.curve : null}
+          scenarioLabel={
+            scenario ? `${formatCents(scenario.monthly_payment_cents)}/mo` : undefined
+          }
+          scenarioAhead={scenario ? scenario.monthly_payment_cents > planPayment : true}
+        />
+        {showScenarioLine && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            The {scenarioAhead ? "green" : "amber"} line is your{" "}
+            <Money>{formatCents(scenario!.monthly_payment_cents)}</Money>/mo
+            what-if — adjust the extra payment below to move it.
+          </p>
+        )}
       </div>
 
       {/* Scenario explorer */}

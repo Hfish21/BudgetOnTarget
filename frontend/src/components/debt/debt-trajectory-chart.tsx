@@ -12,28 +12,82 @@ import {
 import { formatCents } from "@/lib/utils";
 import { usePrivacy } from "@/components/privacy-provider";
 import { PrivateYAxisTick } from "@/components/charts/private-axis-tick";
-import type { DebtTrajectory } from "@/types";
+import type { DebtTrajectory, DebtScenarioPoint } from "@/types";
 
 const ACTUAL_COLOR = "#0ea5e9"; // sky-500
 const PROJECTED_COLOR = "#8b5cf6"; // violet-500
 const PLANNED_COLOR = "oklch(0.6 0 0)"; // neutral grey reference
+const SCENARIO_AHEAD_COLOR = "#10b981"; // emerald-500 (paying ahead)
+const SCENARIO_BEHIND_COLOR = "#f59e0b"; // amber-500 (paying slower)
 
 interface DebtTrajectoryChartProps {
   trajectory: DebtTrajectory;
+  /** Optional "what if" scenario curve to overlay (from the extra-payment explorer). */
+  scenarioCurve?: DebtScenarioPoint[] | null;
+  scenarioLabel?: string;
+  /** True when the scenario pays off sooner than the current plan (draw it green). */
+  scenarioAhead?: boolean;
 }
 
-export function DebtTrajectoryChart({ trajectory }: DebtTrajectoryChartProps) {
+function dashSwatch(color: string, gap = "4px 7px", on = "0 4px") {
+  return {
+    backgroundImage: `repeating-linear-gradient(to right, ${color} ${on}, transparent ${gap})`,
+  };
+}
+
+export function DebtTrajectoryChart({
+  trajectory,
+  scenarioCurve,
+  scenarioLabel,
+  scenarioAhead = true,
+}: DebtTrajectoryChartProps) {
   const { privacyMode } = usePrivacy();
+  const scenarioColor = scenarioAhead ? SCENARIO_AHEAD_COLOR : SCENARIO_BEHIND_COLOR;
+  const showScenario = !!scenarioCurve && scenarioCurve.length > 0;
 
-  const data = trajectory.curve.map((p) => ({
-    label: p.label,
-    actual: p.actual_balance != null ? p.actual_balance / 100 : null,
-    projected: p.projected_balance != null ? p.projected_balance / 100 : null,
-    planned: p.planned_balance != null ? p.planned_balance / 100 : null,
-  }));
+  // Merge the trajectory curve and the optional scenario curve into one dataset
+  // keyed by month, so a scenario that pays off sooner (or later) still lines up.
+  const rowByKey = new Map<
+    string,
+    {
+      label: string;
+      actual: number | null;
+      projected: number | null;
+      planned: number | null;
+      scenario: number | null;
+    }
+  >();
+  for (const p of trajectory.curve) {
+    rowByKey.set(p.month_key, {
+      label: p.label,
+      actual: p.actual_balance != null ? p.actual_balance / 100 : null,
+      projected: p.projected_balance != null ? p.projected_balance / 100 : null,
+      planned: p.planned_balance != null ? p.planned_balance / 100 : null,
+      scenario: null,
+    });
+  }
+  if (showScenario) {
+    for (const p of scenarioCurve!) {
+      let row = rowByKey.get(p.month_key);
+      if (!row) {
+        row = { label: p.label, actual: null, projected: null, planned: null, scenario: null };
+        rowByKey.set(p.month_key, row);
+      }
+      row.scenario = p.balance / 100;
+    }
+  }
+  const data = [...rowByKey.entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([, row]) => row);
 
-  // With many months, thin the x-axis labels so they don't collide.
   const interval = Math.max(0, Math.ceil(data.length / 8) - 1);
+
+  const seriesName: Record<string, string> = {
+    actual: "Actual",
+    projected: "Projected",
+    planned: "Plan",
+    scenario: scenarioLabel ?? "With extra",
+  };
 
   return (
     <div>
@@ -43,23 +97,19 @@ export function DebtTrajectoryChart({ trajectory }: DebtTrajectoryChartProps) {
           Actual
         </span>
         <span className="flex items-center gap-1.5">
-          <span
-            className="inline-block h-0.5 w-4"
-            style={{
-              backgroundImage: `repeating-linear-gradient(to right, ${PROJECTED_COLOR} 0 4px, transparent 4px 7px)`,
-            }}
-          />
+          <span className="inline-block h-0.5 w-4" style={dashSwatch(PROJECTED_COLOR)} />
           Projected (on plan)
         </span>
         <span className="flex items-center gap-1.5">
-          <span
-            className="inline-block h-0.5 w-4"
-            style={{
-              backgroundImage: `repeating-linear-gradient(to right, ${PLANNED_COLOR} 0 3px, transparent 3px 6px)`,
-            }}
-          />
+          <span className="inline-block h-0.5 w-4" style={dashSwatch(PLANNED_COLOR, "3px 6px", "0 3px")} />
           Plan baseline
         </span>
+        {showScenario && (
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-0.5 w-4" style={{ backgroundColor: scenarioColor }} />
+            {scenarioLabel ?? "With extra"}
+          </span>
+        )}
       </div>
 
       <ResponsiveContainer width="100%" height={320}>
@@ -98,12 +148,7 @@ export function DebtTrajectoryChart({ trajectory }: DebtTrajectoryChartProps) {
                       className="text-sm font-medium"
                       style={{ color: entry.color }}
                     >
-                      {entry.dataKey === "actual"
-                        ? "Actual"
-                        : entry.dataKey === "projected"
-                          ? "Projected"
-                          : "Plan"}
-                      :{" "}
+                      {seriesName[String(entry.dataKey)] ?? String(entry.dataKey)}:{" "}
                       <span style={blur}>
                         {formatCents(Math.round((entry.value as number) * 100))}
                       </span>
@@ -133,6 +178,17 @@ export function DebtTrajectoryChart({ trajectory }: DebtTrajectoryChartProps) {
             connectNulls={false}
             isAnimationActive={false}
           />
+          {showScenario && (
+            <Line
+              type="monotone"
+              dataKey="scenario"
+              stroke={scenarioColor}
+              strokeWidth={2.5}
+              dot={false}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          )}
           <Line
             type="monotone"
             dataKey="actual"
