@@ -9,23 +9,6 @@ body:
         Thanks for helping shape BudgetOnTarget! Fill in whatever you can — even a one-liner is useful.
 
         **Please don't include any personal financial data** (real transactions, account numbers, balances). This is a public issue.
-  - type: dropdown
-    id: area
-    attributes:
-      label: Area of the app
-      description: Which part of BudgetOnTarget does this relate to?
-      options:
-        - Not sure / general
-        - Importing transactions
-        - Categories & rules
-        - Targets & budgets
-        - Monthly dashboard
-        - Trends
-        - Transactions view
-        - Settings & data
-        - Something else
-    validations:
-      required: false
   - type: textarea
     id: problem
     attributes:

@@ -50,13 +50,16 @@ function buildIssueUrl(fields: {
   problem: string;
   proposal: string;
 }): string {
+  // GitHub only pre-fills title/input/textarea fields via query params —
+  // dropdown fields cannot be pre-filled — so the chosen area is folded into
+  // the proposal body, where it survives the hand-off and is visible to triage.
+  const proposalWithArea = `${fields.proposal}\n\n**Area:** ${fields.area}`;
   const params = new URLSearchParams({
     template: ISSUE_TEMPLATE,
-    // Issue-form fields pre-fill via query params keyed by the field `id`.
+    // Issue-form textarea fields pre-fill via query params keyed by field `id`.
     title: `[Feature]: ${fields.title}`.slice(0, TITLE_MAX + 11),
-    area: fields.area,
     problem: fields.problem,
-    proposal: fields.proposal,
+    proposal: proposalWithArea,
   });
   return `https://github.com/${REPO}/issues/new?${params.toString()}`;
 }
