@@ -15,7 +15,7 @@ import type {
   HouseholdMember,
   Debt,
 } from "@/types";
-import type { BudgetDebt } from "./types";
+import type { BudgetDebt, BudgetTarget, SpendGroup } from "./types";
 import type { DebtTrajectory, DebtScenario, DebtGoal } from "./debt-engine";
 
 import { BudgetStore } from "./store";
@@ -89,6 +89,36 @@ const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
+
+function targetToResponse(t: BudgetTarget): Target {
+  const isMonetary = t.target_type === "monetary";
+  return {
+    id: t.id,
+    name: t.name,
+    target_type: t.target_type,
+    direction: t.direction,
+    value: t.value,
+    value_display: isMonetary ? formatCents(t.value) : String(t.value),
+    tolerance_upper: t.tolerance_upper,
+    tolerance_lower: t.tolerance_lower,
+    tolerance_upper_display: isMonetary
+      ? formatCents(t.tolerance_upper)
+      : String(t.tolerance_upper),
+    tolerance_lower_display: isMonetary
+      ? formatCents(t.tolerance_lower)
+      : String(t.tolerance_lower),
+    period: t.period,
+    person_scope: t.person_scope,
+    category_id: t.category_id,
+    category_name: t.category_id
+      ? (store.categoryById(t.category_id)?.name ?? null)
+      : null,
+    description_pattern: t.description_pattern,
+    spend_group: t.spend_group,
+    is_active: t.is_active,
+    debt_id: t.debt_id ?? null,
+  };
+}
 
 function debtToResponse(d: BudgetDebt): Debt {
   return {
@@ -500,34 +530,7 @@ export const localApi = {
 
   targets: {
     list: async (): Promise<Target[]> => {
-      return store.targets.map((t) => {
-        const isMonetary = t.target_type === "monetary";
-        return {
-          id: t.id,
-          name: t.name,
-          target_type: t.target_type,
-          direction: t.direction,
-          value: t.value,
-          value_display: isMonetary ? formatCents(t.value) : String(t.value),
-          tolerance_upper: t.tolerance_upper,
-          tolerance_lower: t.tolerance_lower,
-          tolerance_upper_display: isMonetary
-            ? formatCents(t.tolerance_upper)
-            : String(t.tolerance_upper),
-          tolerance_lower_display: isMonetary
-            ? formatCents(t.tolerance_lower)
-            : String(t.tolerance_lower),
-          period: t.period,
-          person_scope: t.person_scope,
-          category_id: t.category_id,
-          category_name: t.category_id
-            ? (store.categoryById(t.category_id)?.name ?? null)
-            : null,
-          description_pattern: t.description_pattern,
-          spend_group: t.spend_group,
-          is_active: t.is_active,
-        };
-      });
+      return store.targets.map(targetToResponse);
     },
 
     create: async (body: {
@@ -544,33 +547,11 @@ export const localApi = {
       spend_group: string;
       is_active: boolean;
     }): Promise<Target> => {
-      const t = store.addTarget(body as Parameters<typeof store.addTarget>[0]);
-      const isMonetary = t.target_type === "monetary";
-      return {
-        id: t.id,
-        name: t.name,
-        target_type: t.target_type,
-        direction: t.direction,
-        value: t.value,
-        value_display: isMonetary ? formatCents(t.value) : String(t.value),
-        tolerance_upper: t.tolerance_upper,
-        tolerance_lower: t.tolerance_lower,
-        tolerance_upper_display: isMonetary
-          ? formatCents(t.tolerance_upper)
-          : String(t.tolerance_upper),
-        tolerance_lower_display: isMonetary
-          ? formatCents(t.tolerance_lower)
-          : String(t.tolerance_lower),
-        period: t.period,
-        person_scope: t.person_scope,
-        category_id: t.category_id,
-        category_name: t.category_id
-          ? (store.categoryById(t.category_id)?.name ?? null)
-          : null,
-        description_pattern: t.description_pattern,
-        spend_group: t.spend_group,
-        is_active: t.is_active,
-      };
+      const t = store.addTarget({
+        ...body,
+        debt_id: null,
+      } as Parameters<typeof store.addTarget>[0]);
+      return targetToResponse(t);
     },
 
     update: async (
@@ -592,32 +573,7 @@ export const localApi = {
     ): Promise<Target> => {
       const t = store.updateTarget(id, body as Record<string, unknown>);
       if (!t) throw new Error("Target not found");
-      const isMonetary = t.target_type === "monetary";
-      return {
-        id: t.id,
-        name: t.name,
-        target_type: t.target_type,
-        direction: t.direction,
-        value: t.value,
-        value_display: isMonetary ? formatCents(t.value) : String(t.value),
-        tolerance_upper: t.tolerance_upper,
-        tolerance_lower: t.tolerance_lower,
-        tolerance_upper_display: isMonetary
-          ? formatCents(t.tolerance_upper)
-          : String(t.tolerance_upper),
-        tolerance_lower_display: isMonetary
-          ? formatCents(t.tolerance_lower)
-          : String(t.tolerance_lower),
-        period: t.period,
-        person_scope: t.person_scope,
-        category_id: t.category_id,
-        category_name: t.category_id
-          ? (store.categoryById(t.category_id)?.name ?? null)
-          : null,
-        description_pattern: t.description_pattern,
-        spend_group: t.spend_group,
-        is_active: t.is_active,
-      };
+      return targetToResponse(t);
     },
 
     delete: async (id: number): Promise<void> => {
@@ -695,6 +651,50 @@ export const localApi = {
       const debt = store.debtById(id);
       if (!debt) throw new Error("Debt not found");
       return requiredPaymentForMonths(store, debt, targetMonths, futureMonthlySpendCents);
+    },
+
+    // The card's "pay at least $X/mo" target — at most one per card (upsert).
+    getPaymentTarget: async (id: number): Promise<Target | null> => {
+      const t = store.targetByDebt(id);
+      return t ? targetToResponse(t) : null;
+    },
+
+    setPaymentTarget: async (
+      id: number,
+      body: {
+        value_cents: number;
+        spend_group: string;
+        category_id: number | null;
+        tolerance_lower_cents?: number;
+      }
+    ): Promise<Target> => {
+      const debt = store.debtById(id);
+      if (!debt) throw new Error("Debt not found");
+      const data = {
+        name: `${debt.name} payment`,
+        target_type: "monetary" as const,
+        direction: "at_least" as const,
+        value: body.value_cents,
+        tolerance_upper: 0,
+        tolerance_lower: body.tolerance_lower_cents ?? 0,
+        period: "monthly",
+        person_scope: null,
+        category_id: body.category_id,
+        description_pattern: null,
+        spend_group: body.spend_group as SpendGroup,
+        is_active: true,
+        debt_id: id,
+      };
+      const existing = store.targetByDebt(id);
+      const t = existing
+        ? store.updateTarget(existing.id, data)!
+        : store.addTarget(data);
+      return targetToResponse(t);
+    },
+
+    deletePaymentTarget: async (id: number): Promise<void> => {
+      const t = store.targetByDebt(id);
+      if (t) store.deleteTarget(t.id);
     },
   },
 

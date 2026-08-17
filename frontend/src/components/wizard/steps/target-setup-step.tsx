@@ -104,6 +104,7 @@ export function TargetSetupStep() {
         description_pattern: null,
         spend_group: draft.spendGroup,
         is_active: true,
+        debt_id: null,
       });
     }
 

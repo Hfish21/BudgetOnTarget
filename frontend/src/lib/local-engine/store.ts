@@ -11,10 +11,12 @@ import type {
   BudgetDebt,
 } from "./types";
 
-// v2 (2026-08): added `debts` for the Debt Trajectory feature. A v1 file opens
-// cleanly (load() backfills `debts: []`); once saved as v2 it will not reopen in
-// a pre-v2 build, the same one-way door every schema bump here creates.
-const CURRENT_VERSION = 2;
+// v2 (2026-08): added `debts` for the Debt Trajectory feature.
+// v3 (2026-08): added `debt_id` on targets, linking a "pay toward a card" target
+// to its debt. Older files open cleanly (load() backfills); once saved at the new
+// version they will not reopen in an older build — the same one-way door every
+// schema bump here creates.
+const CURRENT_VERSION = 3;
 
 function emptyFile(): BudgetFile {
   return {
@@ -75,7 +77,8 @@ export class BudgetStore {
     this.householdMembers = [...file.household_members];
     this.categories = [...file.categories];
     this.categoryRules = [...file.category_rules];
-    this.targets = [...file.targets];
+    // Backfill debt_id for targets that predate card-payment targets.
+    this.targets = file.targets.map((t) => ({ ...t, debt_id: t.debt_id ?? null }));
     this.transactions = file.transactions.map((t) => ({
       ...t,
       is_excluded: t.is_excluded ?? false,
@@ -138,6 +141,10 @@ export class BudgetStore {
 
   debtById(id: number): BudgetDebt | undefined {
     return this.debts.find((d) => d.id === id);
+  }
+
+  targetByDebt(debtId: number): BudgetTarget | undefined {
+    return this.targets.find((t) => t.debt_id === debtId);
   }
 
   memberByName(name: string): BudgetHouseholdMember | undefined {
@@ -298,6 +305,8 @@ export class BudgetStore {
     const idx = this.debts.findIndex((d) => d.id === id);
     if (idx === -1) return false;
     this.debts.splice(idx, 1);
+    // Cascade: a card's payment target has no meaning without the card.
+    this.targets = this.targets.filter((t) => t.debt_id !== id);
     this._notify();
     return true;
   }

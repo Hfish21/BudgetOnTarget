@@ -133,6 +133,7 @@ export interface Target {
   description_pattern: string | null;
   spend_group: SpendGroup;
   is_active: boolean;
+  debt_id: number | null;
 }
 
 export interface Category {

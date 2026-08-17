@@ -67,7 +67,7 @@ Full technical reference: [docs/architecture.md](docs/architecture.md).
 
 - **NEVER commit or push `.budget` or `.db` files.** They contain real financial data and are gitignored. Do not add real transaction exports as fixtures.
 - **`target-engine.ts`, `debt-engine.ts`, `importer.ts`, and `categorizer.ts` do real money math with zero test coverage.** Change them carefully; adding tests alongside is the highest-value contribution.
-- **Changing the `.budget` schema requires bumping `CURRENT_VERSION` in `store.ts`** and handling the old shape in `load()`, or you break every existing user's saved file. `load()` already backfills older fields — follow that pattern. (Schema is at `version: 2` since the `debts` array was added.)
+- **Changing the `.budget` schema requires bumping `CURRENT_VERSION` in `store.ts`** and handling the old shape in `load()`, or you break every existing user's saved file. `load()` already backfills older fields — follow that pattern. (Schema is at `version: 3`: v2 added the `debts` array, v3 added `debt_id` on targets.)
 - **All money is stored as integer cents.** Never introduce floating-point dollar amounts. (APR is stored as integer basis points.)
 - **Adding an app route** means creating it under `src/app/app/`, adding it to `navItems` in `sidebar.tsx`, to `DRAWER_NAV`/`MORE_ROUTES` in `mobile-chrome.tsx`, and to `APP_SHELL` (bump `CACHE_VERSION`) in `public/sw.js`.
 - **Do not add a backend, server, database, or network call.** The privacy guarantee is that nothing leaves the browser. Keep it that way.

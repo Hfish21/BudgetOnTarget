@@ -54,6 +54,13 @@ export interface BudgetTarget {
   spend_group: SpendGroup;
   is_active: boolean;
   created_at: string;
+  /**
+   * When set, this is the "pay toward a card" target for the given debt. Its
+   * actual value is the card's payments that month (from the same source the
+   * debt engine uses), and it is graded "at least" the target amount. At most
+   * one such target exists per debt. Null for ordinary targets.
+   */
+  debt_id: number | null;
 }
 
 export interface BudgetTransaction {

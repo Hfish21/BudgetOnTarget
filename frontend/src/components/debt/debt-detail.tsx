@@ -15,10 +15,18 @@ import {
   getDebtStatusLabel,
   getDebtStatusBgColor,
   getDebtStatusTextColor,
+  getGroupLabel,
   cn,
 } from "@/lib/utils";
-import { AlertTriangle } from "lucide-react";
-import type { DebtTrajectory, DebtScenario, DebtGoal } from "@/types";
+import { AlertTriangle, Check } from "lucide-react";
+import type {
+  DebtTrajectory,
+  DebtScenario,
+  DebtGoal,
+  Target,
+  Category,
+  SpendGroup,
+} from "@/types";
 
 interface DebtDetailProps {
   debtId: number;
@@ -44,6 +52,28 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
   const [extraDollars, setExtraDollars] = useState("0");
   const [goalMonths, setGoalMonths] = useState("12");
   const [goal, setGoal] = useState<DebtGoal | null>(null);
+
+  // "Pay toward this card" target (one per card).
+  const [paymentTarget, setPaymentTarget] = useState<Target | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [ptEditing, setPtEditing] = useState(false);
+  const [ptAmount, setPtAmount] = useState("");
+  const [ptSpendGroup, setPtSpendGroup] = useState<SpendGroup>("necessary");
+  const [ptCategoryId, setPtCategoryId] = useState<number | null>(null);
+
+  const loadPaymentTarget = useCallback(() => {
+    Promise.all([api.debts.getPaymentTarget(debtId), api.categories.list()])
+      .then(([pt, cats]) => {
+        setPaymentTarget(pt);
+        setCategories(cats);
+        if (pt) {
+          setPtAmount((pt.value / 100).toFixed(0));
+          setPtSpendGroup(pt.spend_group);
+          setPtCategoryId(pt.category_id);
+        }
+      })
+      .catch(() => {});
+  }, [debtId]);
 
   useEffect(() => {
     let alive = true;
@@ -72,6 +102,19 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
   useEffect(() => {
     if (trajectory) runScenario();
   }, [trajectory, runScenario]);
+
+  useEffect(() => {
+    loadPaymentTarget();
+  }, [loadPaymentTarget, refreshKey]);
+
+  // Default the target amount to the current plan once loaded (if not tracking yet).
+  useEffect(() => {
+    if (trajectory && !paymentTarget && ptAmount === "") {
+      setPtAmount(
+        ((trajectory.min_payment_cents + trajectory.extra_payment_cents) / 100).toFixed(0)
+      );
+    }
+  }, [trajectory, paymentTarget, ptAmount]);
 
   // Payoff-goal solver.
   const goalN = Math.max(0, Math.round(parseInt(goalMonths || "0", 10)));
@@ -182,6 +225,25 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
       );
     }
   }
+
+  const handleSaveTarget = async () => {
+    const cents = Math.max(0, Math.round(parseFloat(ptAmount || "0") * 100));
+    if (cents <= 0) return;
+    await api.debts.setPaymentTarget(debtId, {
+      value_cents: cents,
+      spend_group: ptSpendGroup,
+      category_id: ptCategoryId,
+    });
+    setPtEditing(false);
+    loadPaymentTarget();
+  };
+
+  const handleStopTracking = async () => {
+    if (!confirm("Stop tracking this card payment as a target?")) return;
+    await api.debts.deletePaymentTarget(debtId);
+    setPtEditing(false);
+    loadPaymentTarget();
+  };
 
   return (
     <div className="space-y-6">
@@ -465,6 +527,145 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
                 </Button>
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Track this payment as a monthly budget target */}
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold">Track this payment as a target</p>
+          <InfoTip>
+            Turn your card payment into a monthly budget target, so you can see —
+            alongside your other targets, on the dashboard — whether you actually
+            paid it. It counts the card&rsquo;s real payments each month and grades
+            you &ldquo;at least&rdquo; the amount you set.
+          </InfoTip>
+        </div>
+
+        {paymentTarget && !ptEditing ? (
+          <div className="mt-3 space-y-3 text-sm">
+            <div className="flex items-start gap-2">
+              <Check className="mt-0.5 size-4 shrink-0 text-emerald-500" />
+              <p>
+                Tracking: pay at least{" "}
+                <span className="font-semibold">
+                  <Money>{formatCents(paymentTarget.value)}</Money>/mo
+                </span>{" "}
+                toward this card, counted under{" "}
+                <span className="font-semibold">
+                  {getGroupLabel(paymentTarget.spend_group)}
+                </span>
+                . It shows on your Monthly dashboard and Targets page.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setPtEditing(true)}
+              >
+                Update amount
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleStopTracking}
+              >
+                Stop tracking
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-3 space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Set a monthly amount to pay toward this card
+              {paymentTarget ? "." : " and we'll track it as a budget target."}
+            </p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Pay at least ($/mo)
+                </label>
+                <div className="mt-1 flex items-center gap-1">
+                  <span className="text-sm text-muted-foreground">$</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="25"
+                    value={ptAmount}
+                    onChange={(e) => setPtAmount(e.target.value)}
+                    className="w-28"
+                  />
+                </div>
+                {goal && !goal.already_on_track && !goal.is_paid_off && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPtAmount((goal.monthly_payment_cents / 100).toFixed(0))
+                    }
+                    className="mt-1 text-xs text-primary hover:underline"
+                  >
+                    Use my {goalN}-month goal (
+                    {formatCents(goal.monthly_payment_cents)}/mo)
+                  </button>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Type of purchase
+                </label>
+                <select
+                  value={ptSpendGroup}
+                  onChange={(e) => setPtSpendGroup(e.target.value as SpendGroup)}
+                  className="mt-1 h-8 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="necessary">Necessary</option>
+                  <option value="discretionary">Discretionary</option>
+                  <option value="anomalous">Anomalous</option>
+                  <option value="income">Income</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Category (optional)
+                </label>
+                <select
+                  value={ptCategoryId ?? ""}
+                  onChange={(e) =>
+                    setPtCategoryId(e.target.value ? Number(e.target.value) : null)
+                  }
+                  className="mt-1 h-8 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">None</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" size="sm" onClick={handleSaveTarget}>
+                {paymentTarget ? "Save" : "Create target"}
+              </Button>
+              {paymentTarget && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setPtEditing(false);
+                    loadPaymentTarget();
+                  }}
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </div>

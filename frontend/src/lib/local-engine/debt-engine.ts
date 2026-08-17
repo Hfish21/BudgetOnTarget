@@ -1,5 +1,5 @@
 import type { BudgetStore } from "./store";
-import type { BudgetDebt } from "./types";
+import type { BudgetDebt, BudgetTransaction } from "./types";
 
 /**
  * Debt Trajectory engine — the payoff math for BudgetOnTarget.
@@ -150,6 +150,54 @@ function activityByMonth(store: BudgetStore, debt: BudgetDebt): Map<string, Mont
     }
   }
   return map;
+}
+
+/**
+ * The transactions that count as payments toward this debt within [start, end].
+ * Linked card: the card account's positive entries (payments/credits). Unlinked:
+ * transactions in the selected payment categories. Internal transfers are
+ * INCLUDED (card payments usually are transfers). Used by the card-payment target
+ * so it counts the same payments the balance math does.
+ */
+export function debtPaymentTransactions(
+  store: BudgetStore,
+  debt: BudgetDebt,
+  startDate: string,
+  endDate: string
+): BudgetTransaction[] {
+  const out: BudgetTransaction[] = [];
+  if (debt.account_id != null) {
+    for (const t of store.transactions) {
+      if (t.account_id !== debt.account_id) continue;
+      if (t.is_excluded || t.is_pending) continue;
+      if (t.date < startDate || t.date > endDate) continue;
+      if (t.amount_cents > 0) out.push(t);
+    }
+  } else {
+    const cats = new Set(debt.payment_category_ids);
+    if (cats.size > 0) {
+      for (const t of store.transactions) {
+        if (t.category_id == null || !cats.has(t.category_id)) continue;
+        if (t.is_excluded) continue;
+        if (t.date < startDate || t.date > endDate) continue;
+        out.push(t);
+      }
+    }
+  }
+  return out;
+}
+
+/** Total paid toward the debt within [start, end], in cents. */
+export function debtPaymentsBetween(
+  store: BudgetStore,
+  debt: BudgetDebt,
+  startDate: string,
+  endDate: string
+): number {
+  return debtPaymentTransactions(store, debt, startDate, endDate).reduce(
+    (sum, t) => sum + Math.abs(t.amount_cents),
+    0
+  );
 }
 
 // --- Core simulation ---

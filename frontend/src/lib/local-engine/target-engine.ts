@@ -4,6 +4,7 @@ import type {
   BudgetTransaction,
   TargetStatus,
 } from "./types";
+import { debtPaymentTransactions, debtPaymentsBetween } from "./debt-engine";
 
 export function getMonthBounds(
   year: number,
@@ -95,6 +96,13 @@ function computeActual(
   periodStart: string,
   periodEnd: string
 ): number {
+  // Card-payment targets count the card's payments that month (transfers
+  // included), from the same source the balance math uses.
+  if (target.debt_id != null) {
+    const debt = store.debtById(target.debt_id);
+    return debt ? debtPaymentsBetween(store, debt, periodStart, periodEnd) : 0;
+  }
+
   let txns = buildBaseFilter(store, target, periodStart, periodEnd);
 
   if (target.target_type === "count") {
@@ -225,12 +233,17 @@ export function getCumulativeDaily(
   periodStart: string,
   periodEnd: string
 ): CumulativeDataPoint[] {
-  let txns = buildBaseFilter(store, target, periodStart, periodEnd);
-
-  if (target.target_type === "monetary" && target.direction === "at_most") {
-    txns = txns.filter((t) => t.amount_cents < 0);
-  } else if (target.target_type === "monetary" && target.direction === "at_least") {
-    txns = txns.filter((t) => t.amount_cents > 0);
+  let txns: BudgetTransaction[];
+  if (target.debt_id != null) {
+    const debt = store.debtById(target.debt_id);
+    txns = debt ? debtPaymentTransactions(store, debt, periodStart, periodEnd) : [];
+  } else {
+    txns = buildBaseFilter(store, target, periodStart, periodEnd);
+    if (target.target_type === "monetary" && target.direction === "at_most") {
+      txns = txns.filter((t) => t.amount_cents < 0);
+    } else if (target.target_type === "monetary" && target.direction === "at_least") {
+      txns = txns.filter((t) => t.amount_cents > 0);
+    }
   }
 
   // Group by date
@@ -272,12 +285,17 @@ export function getTargetTransactions(
   periodStart: string,
   periodEnd: string
 ): BudgetTransaction[] {
-  let txns = buildBaseFilter(store, target, periodStart, periodEnd);
-
-  if (target.target_type === "monetary" && target.direction === "at_most") {
-    txns = txns.filter((t) => t.amount_cents < 0);
-  } else if (target.target_type === "monetary" && target.direction === "at_least") {
-    txns = txns.filter((t) => t.amount_cents > 0);
+  let txns: BudgetTransaction[];
+  if (target.debt_id != null) {
+    const debt = store.debtById(target.debt_id);
+    txns = debt ? debtPaymentTransactions(store, debt, periodStart, periodEnd) : [];
+  } else {
+    txns = buildBaseFilter(store, target, periodStart, periodEnd);
+    if (target.target_type === "monetary" && target.direction === "at_most") {
+      txns = txns.filter((t) => t.amount_cents < 0);
+    } else if (target.target_type === "monetary" && target.direction === "at_least") {
+      txns = txns.filter((t) => t.amount_cents > 0);
+    }
   }
 
   txns.sort((a, b) => (a.date > b.date ? -1 : a.date < b.date ? 1 : 0));
