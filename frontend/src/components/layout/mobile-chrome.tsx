@@ -8,6 +8,7 @@ import {
   TrendingUp,
   ArrowLeftRight,
   Target,
+  CreditCard,
   Upload,
   Settings,
   Menu,
@@ -42,11 +43,12 @@ const DRAWER_NAV = [
   { href: "/app/transactions", label: "Transactions", icon: ArrowLeftRight },
   { href: "/app/import", label: "Import", icon: Upload },
   { href: "/app/targets", label: "Targets", icon: Target },
+  { href: "/app/debt", label: "Debt Trajectory", icon: CreditCard },
   { href: "/app/settings", label: "Settings", icon: Settings },
 ];
 
 // Destinations that live only in the drawer — used to light up "More".
-const MORE_ROUTES = ["/app/import", "/app/settings"];
+const MORE_ROUTES = ["/app/import", "/app/debt", "/app/settings"];
 
 export function MobileChrome() {
   const [drawerOpen, setDrawerOpen] = useState(false);
