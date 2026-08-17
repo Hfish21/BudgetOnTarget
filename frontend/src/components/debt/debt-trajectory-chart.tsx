@@ -7,6 +7,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
 import { formatCents } from "@/lib/utils";
@@ -17,16 +18,23 @@ import type { DebtTrajectory, DebtScenarioPoint } from "@/types";
 const ACTUAL_COLOR = "#0ea5e9"; // sky-500
 const PROJECTED_COLOR = "#8b5cf6"; // violet-500
 const PLANNED_COLOR = "oklch(0.6 0 0)"; // neutral grey reference
-const SCENARIO_AHEAD_COLOR = "#10b981"; // emerald-500 (paying ahead)
-const SCENARIO_BEHIND_COLOR = "#f59e0b"; // amber-500 (paying slower)
+
+export type ScenarioTone = "ahead" | "behind" | "unpayable";
+const TONE_COLOR: Record<ScenarioTone, string> = {
+  ahead: "#10b981", // emerald-500
+  behind: "#f59e0b", // amber-500
+  unpayable: "#ef4444", // red-500
+};
 
 interface DebtTrajectoryChartProps {
   trajectory: DebtTrajectory;
-  /** Optional "what if" scenario curve to overlay (from the extra-payment explorer). */
   scenarioCurve?: DebtScenarioPoint[] | null;
   scenarioLabel?: string;
-  /** True when the scenario pays off sooner than the current plan (draw it green). */
-  scenarioAhead?: boolean;
+  scenarioTone?: ScenarioTone;
+  /** Month label ("Jul 2027") of the current-plan payoff, to mark on the axis. */
+  planPayoffLabel?: string | null;
+  /** Month label of the what-if payoff, to mark on the axis. */
+  scenarioPayoffLabel?: string | null;
 }
 
 function dashSwatch(color: string, gap = "4px 7px", on = "0 4px") {
@@ -35,18 +43,26 @@ function dashSwatch(color: string, gap = "4px 7px", on = "0 4px") {
   };
 }
 
+/** "Jul 2027" -> "Jul '27" for compact axis ticks. */
+function shortMonth(label: string): string {
+  const [mon, yr] = label.split(" ");
+  return yr ? `${mon} '${yr.slice(2)}` : label;
+}
+
 export function DebtTrajectoryChart({
   trajectory,
   scenarioCurve,
   scenarioLabel,
-  scenarioAhead = true,
+  scenarioTone = "ahead",
+  planPayoffLabel,
+  scenarioPayoffLabel,
 }: DebtTrajectoryChartProps) {
   const { privacyMode } = usePrivacy();
-  const scenarioColor = scenarioAhead ? SCENARIO_AHEAD_COLOR : SCENARIO_BEHIND_COLOR;
+  const scenarioColor = TONE_COLOR[scenarioTone];
   const showScenario = !!scenarioCurve && scenarioCurve.length > 0;
 
-  // Merge the trajectory curve and the optional scenario curve into one dataset
-  // keyed by month, so a scenario that pays off sooner (or later) still lines up.
+  // Merge the trajectory and optional scenario curves into one dataset keyed by
+  // month, so a scenario that pays off sooner/later still lines up.
   const rowByKey = new Map<
     string,
     {
@@ -80,13 +96,11 @@ export function DebtTrajectoryChart({
     .sort((a, b) => (a[0] < b[0] ? -1 : 1))
     .map(([, row]) => row);
 
-  const interval = Math.max(0, Math.ceil(data.length / 8) - 1);
-
   const seriesName: Record<string, string> = {
     actual: "Actual",
-    projected: "Projected",
-    planned: "Plan",
-    scenario: scenarioLabel ?? "With extra",
+    projected: "Current plan",
+    planned: "Ideal (from start)",
+    scenario: scenarioLabel ?? "What-if",
   };
 
   return (
@@ -94,34 +108,38 @@ export function DebtTrajectoryChart({
       <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-0.5 w-4" style={{ backgroundColor: ACTUAL_COLOR }} />
-          Actual
+          Actual so far
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-0.5 w-4" style={dashSwatch(PROJECTED_COLOR)} />
-          Projected (on plan)
+          Current plan
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-0.5 w-4" style={dashSwatch(PLANNED_COLOR, "3px 6px", "0 3px")} />
-          Plan baseline
+          Ideal (from start)
         </span>
         {showScenario && (
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-0.5 w-4" style={{ backgroundColor: scenarioColor }} />
-            {scenarioLabel ?? "With extra"}
+            {scenarioLabel ?? "What-if"}
           </span>
         )}
       </div>
 
-      <ResponsiveContainer width="100%" height={320}>
-        <LineChart data={data} margin={{ top: 5, right: 16, left: 10, bottom: 5 }}>
+      <ResponsiveContainer width="100%" height={340}>
+        <LineChart data={data} margin={{ top: 10, right: 56, left: 10, bottom: 28 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.25 0 0)" />
           <XAxis
             dataKey="label"
             tickLine={false}
             axisLine={false}
-            fontSize={11}
-            interval={interval}
-            tick={{ fill: "oklch(0.65 0 0)" }}
+            interval={0}
+            angle={-45}
+            textAnchor="end"
+            height={48}
+            fontSize={10}
+            tickFormatter={shortMonth}
+            tick={{ fill: "oklch(0.6 0 0)" }}
           />
           <YAxis
             tickLine={false}
@@ -158,6 +176,43 @@ export function DebtTrajectoryChart({
               );
             }}
           />
+
+          {/* Payoff-month markers, so the exact month is unambiguous. */}
+          {planPayoffLabel && (
+            <ReferenceLine
+              x={planPayoffLabel}
+              stroke={PROJECTED_COLOR}
+              strokeDasharray="2 3"
+              label={
+                privacyMode
+                  ? undefined
+                  : {
+                      value: `Plan: ${shortMonth(planPayoffLabel)}`,
+                      position: "top",
+                      fill: PROJECTED_COLOR,
+                      fontSize: 10,
+                    }
+              }
+            />
+          )}
+          {showScenario && scenarioPayoffLabel && (
+            <ReferenceLine
+              x={scenarioPayoffLabel}
+              stroke={scenarioColor}
+              strokeDasharray="2 3"
+              label={
+                privacyMode
+                  ? undefined
+                  : {
+                      value: `What-if: ${shortMonth(scenarioPayoffLabel)}`,
+                      position: "top",
+                      fill: scenarioColor,
+                      fontSize: 10,
+                    }
+              }
+            />
+          )}
+
           <Line
             type="monotone"
             dataKey="planned"

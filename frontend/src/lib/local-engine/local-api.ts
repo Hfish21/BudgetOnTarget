@@ -16,10 +16,10 @@ import type {
   Debt,
 } from "@/types";
 import type { BudgetDebt } from "./types";
-import type { DebtTrajectory, DebtScenario } from "./debt-engine";
+import type { DebtTrajectory, DebtScenario, DebtGoal } from "./debt-engine";
 
 import { BudgetStore } from "./store";
-import { assessDebt, scenarioDebt } from "./debt-engine";
+import { assessDebt, scenarioDebt, requiredPaymentForMonths } from "./debt-engine";
 import {
   assessAllTargets,
   assessTarget,
@@ -685,6 +685,16 @@ export const localApi = {
       const debt = store.debtById(id);
       if (!debt) throw new Error("Debt not found");
       return scenarioDebt(store, debt, extraCents, futureMonthlySpendCents);
+    },
+
+    getGoal: async (
+      id: number,
+      targetMonths: number,
+      futureMonthlySpendCents = 0
+    ): Promise<DebtGoal> => {
+      const debt = store.debtById(id);
+      if (!debt) throw new Error("Debt not found");
+      return requiredPaymentForMonths(store, debt, targetMonths, futureMonthlySpendCents);
     },
   },
 

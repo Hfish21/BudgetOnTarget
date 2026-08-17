@@ -5,7 +5,11 @@ import { api } from "@/lib/api";
 import { Money } from "@/components/money";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { DebtTrajectoryChart } from "@/components/debt/debt-trajectory-chart";
+import { InfoTip } from "@/components/debt/info-tip";
+import {
+  DebtTrajectoryChart,
+  type ScenarioTone,
+} from "@/components/debt/debt-trajectory-chart";
 import {
   formatCents,
   getDebtStatusLabel,
@@ -14,14 +18,13 @@ import {
   cn,
 } from "@/lib/utils";
 import { AlertTriangle } from "lucide-react";
-import type { DebtTrajectory, DebtScenario } from "@/types";
+import type { DebtTrajectory, DebtScenario, DebtGoal } from "@/types";
 
 interface DebtDetailProps {
   debtId: number;
   refreshKey: number;
 }
 
-/** Month index for "YYYY-MM", for comparing payoff dates. */
 function monthIdx(key: string): number {
   const [y, m] = key.split("-").map(Number);
   return y * 12 + (m - 1);
@@ -29,19 +32,18 @@ function monthIdx(key: string): number {
 
 function driftPhrase(drift: number | null): string {
   if (drift == null) return "";
-  if (drift > 0) return `${drift} month${drift === 1 ? "" : "s"} later than plan`;
-  if (drift < 0) return `${-drift} month${-drift === 1 ? "" : "s"} ahead of plan`;
-  return "right on plan";
+  if (drift > 0) return `${drift} month${drift === 1 ? "" : "s"} behind schedule`;
+  if (drift < 0) return `${-drift} month${-drift === 1 ? "" : "s"} ahead of schedule`;
+  return "right on schedule";
 }
 
 export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
-  // The base trajectory is your CURRENT PLAN (no new spending) — the "original".
-  // It only depends on the card, so the sliders never refetch it.
   const [trajectory, setTrajectory] = useState<DebtTrajectory | null>(null);
-  // The combined what-if (future spending + extra payment) drives the scenario line.
   const [scenario, setScenario] = useState<DebtScenario | null>(null);
-  const [spendDollars, setSpendDollars] = useState("0"); // extra monthly spending
-  const [extraDollars, setExtraDollars] = useState("0"); // extra monthly payment
+  const [spendDollars, setSpendDollars] = useState("0");
+  const [extraDollars, setExtraDollars] = useState("0");
+  const [goalMonths, setGoalMonths] = useState("12");
+  const [goal, setGoal] = useState<DebtGoal | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -50,9 +52,7 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
       .then((t) => {
         if (alive) setTrajectory(t);
       })
-      .catch(() => {
-        /* non-critical */
-      });
+      .catch(() => {});
     return () => {
       alive = false;
     };
@@ -62,74 +62,95 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
   const extraPaymentCents = Math.max(0, Math.round(parseFloat(extraDollars || "0") * 100));
   const spendCents = Math.max(0, Math.round(parseFloat(spendDollars || "0") * 100));
 
-  // Scenario payment = your plan (min + configured extra) + the extra you add here.
   const runScenario = useCallback(() => {
     api.debts
       .getScenario(debtId, configuredExtraCents + extraPaymentCents, spendCents)
       .then(setScenario)
-      .catch(() => {
-        /* non-critical */
-      });
+      .catch(() => {});
   }, [debtId, configuredExtraCents, extraPaymentCents, spendCents]);
 
   useEffect(() => {
     if (trajectory) runScenario();
   }, [trajectory, runScenario]);
 
-  // Skeleton only before the first load or while switching to another card —
-  // never on an in-place refetch, so the inputs keep focus.
+  // Payoff-goal solver.
+  const goalN = Math.max(0, Math.round(parseInt(goalMonths || "0", 10)));
+  useEffect(() => {
+    if (!trajectory || goalN <= 0) {
+      setGoal(null);
+      return;
+    }
+    let alive = true;
+    api.debts
+      .getGoal(debtId, goalN, spendCents)
+      .then((g) => {
+        if (alive) setGoal(g);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [debtId, refreshKey, goalN, spendCents, trajectory]);
+
   if (!trajectory || trajectory.debt_id !== debtId) {
     return <div className="h-64 animate-pulse rounded-xl bg-muted" />;
   }
 
   const t = trajectory;
   const planPaymentCents = t.min_payment_cents + configuredExtraCents;
+  const scenarioPaymentCents = planPaymentCents + extraPaymentCents;
   const isModified = extraPaymentCents > 0 || spendCents > 0;
 
   const origKey = t.projected_payoff_month_key;
   const scnKey = scenario?.payoff_month_key ?? null;
-  const monthsShift =
-    origKey && scnKey ? monthIdx(origKey) - monthIdx(scnKey) : null; // + => sooner
+  const monthsShift = origKey && scnKey ? monthIdx(origKey) - monthIdx(scnKey) : null;
   const scenarioAhead = monthsShift != null ? monthsShift > 0 : extraPaymentCents >= spendCents;
-  const showScenarioLine =
-    isModified && !!scenario && !scenario.never_pays_off && scenario.curve.length > 1;
+  const scenarioTone: ScenarioTone = scenario?.never_pays_off
+    ? "unpayable"
+    : scenarioAhead
+      ? "ahead"
+      : "behind";
+  const showScenarioLine = isModified && !!scenario && scenario.curve.length > 1;
+
+  // Break-even spending: above this monthly spend, the current payment can't
+  // outrun interest and the balance never clears.
+  const r = t.apr_bps / 10000 / 12;
+  const maxSpendCents = scenarioPaymentCents - Math.round(t.current_balance_cents * r);
 
   const headline = t.never_pays_off
-    ? "The minimum payment doesn't cover the monthly interest — this balance won't pay off. Increase the payment."
+    ? "Your monthly payment doesn't cover the interest — this balance won't go down. Increase the payment."
     : t.is_paid_off
       ? "Paid off — nice work."
       : t.projected_payoff_label
-        ? `Projected payoff ${t.projected_payoff_label}`
-        : "Projected payoff — enter your payments to see it";
+        ? `On track to be paid off in ${t.projected_payoff_label}`
+        : "Add your payments to see a payoff date";
 
-  // Plain-English result of the what-if.
+  // What-if result sentence.
   let scenarioText: React.ReactNode = null;
   if (isModified && scenario) {
-    const origInt = t.total_interest_remaining_cents;
-    const scnInt = scenario.total_interest_cents;
-    const interestDelta = origInt != null && scnInt != null ? origInt - scnInt : null;
+    const interestDelta =
+      t.total_interest_remaining_cents != null && scenario.total_interest_cents != null
+        ? t.total_interest_remaining_cents - scenario.total_interest_cents
+        : null;
     if (scenario.never_pays_off) {
       scenarioText = (
         <span className="text-red-600 dark:text-red-400">
-          At {spendCents > 0 && <><Money>{formatCents(spendCents)}</Money>/mo spending</>}
-          {spendCents > 0 && extraPaymentCents > 0 ? " and " : ""}
-          {extraPaymentCents > 0 && <><Money>{formatCents(extraPaymentCents)}</Money>/mo extra</>}
-          , this never gets paid off — spending outpaces the payment.
+          At this rate the balance never gets paid off — what you&rsquo;re spending
+          outpaces what you&rsquo;re paying. Spend less or pay more.
         </span>
       );
     } else {
-      const shiftPhrase =
+      const phrase =
         monthsShift == null
-          ? "your current plan wouldn't pay it off"
+          ? "pays it off (your current plan wouldn't)"
           : monthsShift > 0
             ? `${monthsShift} month${monthsShift === 1 ? "" : "s"} sooner`
             : monthsShift < 0
               ? `${-monthsShift} month${-monthsShift === 1 ? "" : "s"} later`
-              : "the same timing";
+              : "about the same timing";
       scenarioText = (
         <span>
-          Paid off <span className="font-semibold">{scenario.payoff_label}</span>
-          {" — "}
+          Paid off <span className="font-semibold">{scenario.payoff_label}</span> —{" "}
           <span
             className={cn(
               "font-semibold",
@@ -138,11 +159,9 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
                 : "text-amber-600 dark:text-amber-400"
             )}
           >
-            {shiftPhrase}
+            {phrase}
           </span>{" "}
-          {monthsShift != null && (
-            <>than your current plan ({t.projected_payoff_label}). </>
-          )}
+          {monthsShift != null && <>than your current plan ({t.projected_payoff_label}). </>}
           {interestDelta != null && interestDelta !== 0 && (
             <>
               {interestDelta > 0 ? "Saves " : "Costs "}
@@ -181,22 +200,41 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
               {driftPhrase(t.date_drift_months)}
             </span>
           )}
+          <InfoTip>
+            <span>
+              <b>Ahead / on track / behind</b> compares where your balance actually
+              is against where your plan (minimum + your set extra, no new
+              spending) said it should be by now.
+            </span>
+          </InfoTip>
         </div>
         <p className="mt-2 text-lg font-semibold tracking-tight">{headline}</p>
       </div>
 
       {/* Key stats — your current plan */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Estimated balance now">
+        <Stat
+          label="Balance today"
+          tip="Your estimated balance right now — the anchor balance plus everything charged since, minus your payments, with interest added each month."
+        >
           <Money>{formatCents(t.current_balance_cents)}</Money>
         </Stat>
-        <Stat label="Projected payoff (current plan)">
+        <Stat
+          label="Debt-free by"
+          tip="When you'll be paid off if you keep paying your current monthly amount and stop adding new charges."
+        >
           {t.never_pays_off ? "Never at this rate" : (t.projected_payoff_label ?? "—")}
         </Stat>
-        <Stat label="Months remaining">
+        <Stat
+          label="Months to go"
+          tip="How many months until the balance hits zero on your current plan."
+        >
           {t.months_remaining != null ? String(t.months_remaining) : "—"}
         </Stat>
-        <Stat label="Interest left">
+        <Stat
+          label="Interest you'll still pay"
+          tip="Total interest left to pay before it's gone, if you stick to your current plan."
+        >
           {t.total_interest_remaining_cents != null ? (
             <Money>{formatCents(t.total_interest_remaining_cents)}</Money>
           ) : (
@@ -243,29 +281,43 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
 
       {/* Trajectory chart */}
       <div className="rounded-xl border border-border bg-card p-5">
-        <p className="mb-4 text-sm font-semibold">Balance over time</p>
+        <div className="mb-4 flex items-center gap-2">
+          <p className="text-sm font-semibold">Balance over time</p>
+          <InfoTip>
+            Each point is one month. The dashed <b>Current plan</b> line is where
+            you&rsquo;re headed now; the solid line is your <b>what-if</b> below.
+            The vertical markers call out the exact payoff month.
+          </InfoTip>
+        </div>
         <DebtTrajectoryChart
           trajectory={t}
           scenarioCurve={showScenarioLine ? scenario!.curve : null}
           scenarioLabel="Your what-if"
-          scenarioAhead={scenarioAhead}
+          scenarioTone={scenarioTone}
+          planPayoffLabel={t.never_pays_off ? null : t.projected_payoff_label}
+          scenarioPayoffLabel={
+            showScenarioLine && scenario && !scenario.never_pays_off
+              ? scenario.payoff_label
+              : null
+          }
         />
       </div>
 
-      {/* Unified projection panel: two levers -> one combined line */}
+      {/* Unified projection: two levers -> one net what-if line */}
       <div className="rounded-xl border border-border bg-card p-5">
-        <p className="text-sm font-semibold">Project your payoff</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Adjust either lever. Spending more pushes the payoff out; paying more
-          brings it in — the line on the chart is the net of the two, compared to
-          your current plan (paying{" "}
-          <Money>{formatCents(planPaymentCents)}</Money>/mo).
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold">Play with the numbers</p>
+          <InfoTip>
+            Spending more pushes your payoff date out; paying more brings it in.
+            The line on the chart is the net of the two, compared to your current
+            plan of <Money>{formatCents(planPaymentCents)}</Money>/mo.
+          </InfoTip>
+        </div>
 
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="text-xs font-medium text-muted-foreground">
-              Extra monthly spending
+              If I keep spending&hellip;
             </label>
             <div className="mt-1 flex items-center gap-1">
               <span className="text-sm text-muted-foreground">$</span>
@@ -279,23 +331,38 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
               />
               <span className="text-sm text-muted-foreground">/ mo</span>
             </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              {maxSpendCents > 0 ? (
+                <>
+                  Spend more than about{" "}
+                  <span className="font-medium text-red-600 dark:text-red-400">
+                    <Money>{formatCents(maxSpendCents)}</Money>/mo
+                  </span>{" "}
+                  and it never gets paid off.
+                </>
+              ) : (
+                <span className="font-medium text-red-600 dark:text-red-400">
+                  Your payment doesn&rsquo;t cover interest yet — even $0 new
+                  spending won&rsquo;t pay this off.
+                </span>
+              )}
+            </p>
             {t.is_linked && t.recent_monthly_spend_cents > 0 && (
               <button
                 type="button"
                 onClick={() =>
                   setSpendDollars((t.recent_monthly_spend_cents / 100).toFixed(0))
                 }
-                className="mt-1.5 text-xs text-primary hover:underline"
+                className="mt-1 text-xs text-primary hover:underline"
               >
-                Use my recent average (
-                {formatCents(t.recent_monthly_spend_cents)}/mo)
+                Use my recent average ({formatCents(t.recent_monthly_spend_cents)}/mo)
               </button>
             )}
           </div>
 
           <div>
             <label className="text-xs font-medium text-muted-foreground">
-              Extra monthly payment
+              If I pay extra&hellip;
             </label>
             <div className="mt-1 flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-1">
@@ -330,50 +397,96 @@ export function DebtDetail({ debtId, refreshKey }: DebtDetailProps) {
         )}
         {!isModified && (
           <p className="mt-4 text-xs text-muted-foreground">
-            Both at $0 shows just your current plan. Bump either to see the
-            what-if line appear.
+            Leave both at $0 to see just your current plan. Change either to see the
+            what-if line appear on the chart above.
           </p>
         )}
       </div>
 
-      {/* Month-by-month strip */}
-      {t.months.length > 0 && (
-        <div className="rounded-xl border border-border bg-card p-5">
-          <p className="mb-3 text-sm font-semibold">Month by month</p>
-          <div className="flex flex-wrap gap-1.5">
-            {t.months.map((m) => (
-              <div
-                key={m.month_key}
-                title={`${m.label}: ${getDebtStatusLabel(m.status)} — ${formatCents(
-                  m.actual_balance
-                )} vs plan ${formatCents(m.planned_balance)}`}
-                className="flex flex-col items-center gap-1"
-              >
-                <span
-                  className={cn("size-6 rounded-md", getDebtStatusBgColor(m.status))}
-                />
-                <span className="text-[9px] text-muted-foreground">
-                  {m.label.slice(0, 3)}
-                </span>
-              </div>
-            ))}
-          </div>
+      {/* Payoff goal solver */}
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold">Hit a payoff goal</p>
+          <InfoTip>
+            Pick how soon you want to be debt-free and we&rsquo;ll tell you the
+            monthly payment it takes{spendCents > 0 ? " (given your spending above)" : ""}.
+          </InfoTip>
         </div>
-      )}
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Pay it off in</span>
+          <Input
+            type="number"
+            min="1"
+            step="1"
+            value={goalMonths}
+            onChange={(e) => setGoalMonths(e.target.value)}
+            className="w-20"
+          />
+          <span className="text-muted-foreground">months</span>
+        </div>
+
+        {goal && goalN > 0 && (
+          <div className="mt-4 rounded-lg bg-muted/40 p-4 text-sm">
+            {goal.is_paid_off ? (
+              <span>This card is already paid off.</span>
+            ) : goal.already_on_track ? (
+              <span>
+                You&rsquo;re already on track — your current plan pays this off by{" "}
+                <span className="font-semibold">{t.projected_payoff_label}</span>,
+                within {goalN} months. You could even pay{" "}
+                <span className="font-semibold">
+                  <Money>{formatCents(Math.abs(goal.extra_over_plan_cents))}</Money>
+                </span>
+                /mo less.
+              </span>
+            ) : (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span>
+                  Pay{" "}
+                  <span className="font-semibold">
+                    <Money>{formatCents(goal.monthly_payment_cents)}</Money>/mo
+                  </span>{" "}
+                  (that&rsquo;s{" "}
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    <Money>{formatCents(goal.extra_over_plan_cents)}</Money>/mo extra
+                  </span>
+                  ) to be done by{" "}
+                  <span className="font-semibold">{goal.payoff_label}</span>.
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setExtraDollars((goal.extra_over_plan_cents / 100).toFixed(0))
+                  }
+                >
+                  Show this on the chart
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 function Stat({
   label,
+  tip,
   children,
 }: {
   label: string;
+  tip?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="rounded-xl border border-border bg-card p-4">
-      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="flex items-center gap-1 text-xs text-muted-foreground">
+        {label}
+        {tip && <InfoTip>{tip}</InfoTip>}
+      </p>
       <p className="mt-1 text-lg font-semibold tracking-tight">{children}</p>
     </div>
   );

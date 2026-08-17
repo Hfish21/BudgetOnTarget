@@ -215,6 +215,7 @@ export type {
   DebtTrajectory,
   DebtScenario,
   DebtScenarioPoint,
+  DebtGoal,
   DebtMonthPoint,
   DebtMonthHistory,
 } from "@/lib/local-engine/debt-engine";

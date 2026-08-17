@@ -362,6 +362,40 @@ function recentMonthlySpend(activity: Map<string, MonthActivity>, nowYM: YM): nu
   return count > 0 ? Math.round(sum / count) : 0;
 }
 
+/** How many months of a never-paying-off scenario to plot, so the rising line is visible. */
+const NEVER_CURVE_HORIZON = 24;
+
+/**
+ * Record a rising/falling balance forward for up to `horizon` months (or until
+ * payoff), WITHOUT the "never pays off" early return — used to plot a scenario
+ * that never pays off as a visibly climbing line. Returns the payoff month key
+ * if it happens to clear within the horizon, else null.
+ */
+function forwardCurve(
+  startCents: number,
+  startYM: YM,
+  r: number,
+  paymentCents: number,
+  futureChargeCents: number,
+  out: Map<string, number>,
+  horizon: number
+): string | null {
+  out.set(monthKey(startYM), Math.max(0, startCents));
+  let balance = startCents;
+  let cur = startYM;
+  for (let n = 1; n <= horizon; n++) {
+    const interest = Math.round(balance * r);
+    balance = balance + interest + futureChargeCents - paymentCents;
+    cur = addMonths(cur, 1);
+    if (balance <= 0) {
+      out.set(monthKey(cur), 0);
+      return monthKey(cur);
+    }
+    out.set(monthKey(cur), balance);
+  }
+  return null;
+}
+
 function classify(gapCents: number, toleranceCents: number): DebtStatus {
   if (gapCents > toleranceCents) return "ahead";
   if (gapCents < -toleranceCents) return "behind";
@@ -521,9 +555,14 @@ export function scenarioDebt(
   const sim = simulatePayoff(currentBalance, r, payment, futureSpend);
   const minSim = simulatePayoff(currentBalance, r, debt.min_payment_cents, futureSpend);
 
-  // Balance curve from now to payoff under this scenario (for the chart).
+  // Balance curve from now to payoff under this scenario (for the chart). When it
+  // never pays off, plot a short rising window so the (red) line is visible.
   const curveMap = new Map<string, number>();
-  fillForward(currentBalance, startYM, r, payment, futureSpend, curveMap);
+  if (sim.neverPaysOff) {
+    forwardCurve(currentBalance, startYM, r, payment, futureSpend, curveMap, NEVER_CURVE_HORIZON);
+  } else {
+    fillForward(currentBalance, startYM, r, payment, futureSpend, curveMap);
+  }
   const curve: DebtScenarioPoint[] = [...curveMap.entries()]
     .sort((a, b) => (a[0] < b[0] ? -1 : 1))
     .map(([month_key, balance]) => ({
@@ -552,5 +591,73 @@ export function scenarioDebt(
     interest_saved_cents: interestSaved,
     never_pays_off: sim.neverPaysOff,
     curve,
+  };
+}
+
+export interface DebtGoal {
+  target_months: number;
+  payoff_month_key: string | null;
+  payoff_label: string | null;
+  /** Total monthly payment needed to clear the balance in target_months. */
+  monthly_payment_cents: number;
+  /** How much more (or less, if negative) than the current plan that requires. */
+  extra_over_plan_cents: number;
+  /** True when the current plan already pays it off by then (no extra needed). */
+  already_on_track: boolean;
+  is_paid_off: boolean;
+}
+
+/**
+ * Solve for the monthly payment needed to pay the current balance off in exactly
+ * `targetMonths`, under a future-spend assumption. Uses the closed-form
+ * annuity payment, then rounds up so rounding never leaves a small tail.
+ */
+export function requiredPaymentForMonths(
+  store: BudgetStore,
+  debt: BudgetDebt,
+  targetMonths: number,
+  futureMonthlySpendCents = 0
+): DebtGoal {
+  const r = debt.apr_bps / 10000 / 12;
+  const s = Math.max(0, Math.round(futureMonthlySpendCents));
+  const { currentBalance, currentYM: startYM } = computeActualToDate(store, debt, r);
+  const planPayment = debt.min_payment_cents + debt.extra_payment_cents;
+  const n = Math.max(1, Math.round(targetMonths));
+
+  if (currentBalance <= 0) {
+    return {
+      target_months: n,
+      payoff_month_key: monthKey(startYM),
+      payoff_label: monthLabel(startYM),
+      monthly_payment_cents: 0,
+      extra_over_plan_cents: -planPayment,
+      already_on_track: true,
+      is_paid_off: true,
+    };
+  }
+
+  // Annuity payment to clear currentBalance in n months at rate r, plus spend.
+  let payment: number;
+  if (r === 0) {
+    payment = s + currentBalance / n;
+  } else {
+    const f = Math.pow(1 + r, n);
+    payment = s + (r * currentBalance * f) / (f - 1);
+  }
+  const paymentCents = Math.ceil(payment);
+  const payoffYM = addMonths(startYM, n);
+
+  // Does the current plan already clear it within the target?
+  const planSim = simulatePayoff(currentBalance, r, planPayment, s);
+  const alreadyOnTrack = planSim.months != null && planSim.months <= n;
+
+  return {
+    target_months: n,
+    payoff_month_key: monthKey(payoffYM),
+    payoff_label: monthLabel(payoffYM),
+    monthly_payment_cents: paymentCents,
+    extra_over_plan_cents: paymentCents - planPayment,
+    already_on_track: alreadyOnTrack,
+    is_paid_off: false,
   };
 }

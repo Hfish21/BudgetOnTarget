@@ -20,6 +20,8 @@ interface DebtSummary {
   status: DebtStatus;
   current_balance_cents: number;
   projected_payoff_label: string | null;
+  projected_payoff_month_key: string | null;
+  never_pays_off: boolean;
   is_paid_off: boolean;
 }
 
@@ -53,6 +55,8 @@ export default function DebtPage() {
               status: t.status,
               current_balance_cents: t.current_balance_cents,
               projected_payoff_label: t.projected_payoff_label,
+              projected_payoff_month_key: t.projected_payoff_month_key,
+              never_pays_off: t.never_pays_off,
               is_paid_off: t.is_paid_off,
             } as DebtSummary,
           ] as const;
@@ -145,6 +149,47 @@ export default function DebtPage() {
         )
       ) : (
         <>
+          {/* All-cards summary (only when there's more than one) */}
+          {debts.length > 1 &&
+            (() => {
+              const list = debts
+                .map((d) => summaries[d.id])
+                .filter((s): s is DebtSummary => !!s);
+              if (list.length === 0) return null;
+              const total = list.reduce((a, s) => a + s.current_balance_cents, 0);
+              const anyNever = list.some((s) => s.never_pays_off && !s.is_paid_off);
+              const latest = list.reduce<DebtSummary | null>((best, s) => {
+                if (!s.projected_payoff_month_key) return best;
+                if (!best || s.projected_payoff_month_key > best.projected_payoff_month_key!)
+                  return s;
+                return best;
+              }, null);
+              return (
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Total across {list.length} cards
+                      </p>
+                      <p className="text-xl font-bold tracking-tight">
+                        <Money>{formatCents(total)}</Money>
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">
+                        {anyNever ? "Payoff outlook" : "All paid off by"}
+                      </p>
+                      <p className="text-sm font-semibold">
+                        {anyNever
+                          ? "One or more won't pay off at the current rate"
+                          : (latest?.projected_payoff_label ?? "—")}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
           {/* Selectable card summaries */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {debts.map((debt) => {
