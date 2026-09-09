@@ -78,6 +78,7 @@ export function CsvUploadStep() {
           account_type: csvFile.account.type,
           owner_type: "joint",
           household_member_id: null,
+          csv_mapping: csvFile.mapping,
         });
 
         const encoder = new TextEncoder();

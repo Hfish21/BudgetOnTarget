@@ -1,3 +1,5 @@
+import type { FieldMappingConfig } from "./csv-parser-generic";
+
 export type SpendGroup = "income" | "necessary" | "discretionary" | "anomalous";
 export type TargetType = "monetary" | "count";
 export type Direction = "at_most" | "at_least" | "exactly";
@@ -14,6 +16,13 @@ export interface BudgetAccount {
   owner_type: OwnerType;
   household_member_id: number | null;
   created_at: string;
+  /**
+   * The column mapping used to parse this account's CSV exports. Set when an
+   * account is created from a non-USAA CSV (via the onboarding wizard or an
+   * auto-detected ongoing import) so later uploads reuse the same parser.
+   * Null/absent for USAA accounts, which use the built-in USAA parser.
+   */
+  csv_mapping?: FieldMappingConfig | null;
 }
 
 export interface BudgetHouseholdMember {

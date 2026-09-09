@@ -32,7 +32,10 @@ import {
   getTargetTransactions,
 } from "./target-engine";
 import { categorize, recategorizeAll } from "./categorizer";
-import { importCsv } from "./importer";
+import { importCsv, importGenericCsv } from "./importer";
+import { parseUsaaCsv } from "./csv-parser";
+import { autoDetectConfig } from "./csv-parser-generic";
+import type { AccountType } from "./types";
 
 const store = new BudgetStore();
 
@@ -705,7 +708,52 @@ export const localApi = {
       includePending = false
     ): Promise<ImportResult> => {
       const buffer = await file.arrayBuffer();
-      return importCsv(store, buffer, file.name, accountId, includePending);
+      const account = store.accountById(accountId);
+      if (!account) throw new Error(`Account with id ${accountId} not found`);
+
+      // Account already has a saved column mapping (from the onboarding wizard
+      // or a previous auto-detected import): reuse it so the parser matches the
+      // file every time.
+      if (account.csv_mapping) {
+        return importGenericCsv(
+          store,
+          buffer,
+          file.name,
+          accountId,
+          account.csv_mapping,
+          includePending
+        );
+      }
+
+      // No stored mapping. Preserve existing behavior for USAA files: run the
+      // USAA parser first. Its dates and raw descriptions differ from the
+      // generic parser's, so switching an existing USAA account to generic
+      // would change transaction hashes and re-import everything as new — so
+      // when the USAA parser finds rows, keep using it (mapping stays null).
+      const text = new TextDecoder("utf-8").decode(buffer);
+      const cleanText = text.startsWith("﻿") ? text.slice(1) : text;
+      const usaaRows = parseUsaaCsv(
+        cleanText,
+        account.account_type as AccountType,
+        true
+      );
+      if (usaaRows.length > 0) {
+        return importCsv(store, buffer, file.name, accountId, includePending);
+      }
+
+      // Non-USAA file (e.g. all-caps Wells Fargo headers): auto-detect the
+      // mapping, persist it so future uploads reuse the same parser, and import
+      // via the generic parser.
+      const { config } = autoDetectConfig(cleanText);
+      store.updateAccount(accountId, { csv_mapping: config });
+      return importGenericCsv(
+        store,
+        buffer,
+        file.name,
+        accountId,
+        config,
+        includePending
+      );
     },
 
     list: async (): Promise<ImportRecord[]> => {
