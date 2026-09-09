@@ -195,14 +195,18 @@ export async function importGenericCsv(
   fileContent: ArrayBuffer,
   filename: string,
   accountId: number,
-  mappingConfig: FieldMappingConfig
+  mappingConfig: FieldMappingConfig,
+  includePending = false
 ): Promise<ImportResult> {
   const fileHash = await computeFileHash(fileContent);
+  const existingImport = store.csvImports.find((i) => i.file_hash === fileHash);
 
-  if (store.hasFileHash(fileHash)) {
-    const existing = store.csvImports.find((i) => i.file_hash === fileHash)!;
+  // A re-imported file normally adds nothing. But when the user opts into
+  // pending this time, we still reconcile the account's pending overlay from it
+  // (the posted rows all dedup as duplicates), mirroring importCsv.
+  if (existingImport && !includePending) {
     return {
-      csv_import_id: existing.id,
+      csv_import_id: existingImport.id,
       filename,
       total_rows: 0,
       new_transactions: 0,
@@ -217,6 +221,9 @@ export async function importGenericCsv(
   const account = store.accountById(accountId);
   if (!account) throw new Error(`Account with id ${accountId} not found`);
 
+  // Pending is a volatile overlay — drop this account's existing pending rows
+  // so a charge that has since posted is never double-counted. Runs on every
+  // real import, regardless of includePending.
   store.deletePendingForAccount(accountId);
 
   const text = new TextDecoder("utf-8").decode(fileContent);
@@ -224,17 +231,20 @@ export async function importGenericCsv(
   const parsed = parseGenericCsv(
     cleanText,
     mappingConfig,
-    account.account_type as AccountType
+    account.account_type as AccountType,
+    includePending
   );
 
   if (parsed.length === 0) {
-    const imp = store.addCsvImport({
-      filename,
-      file_hash: fileHash,
-      row_count: 0,
-      new_transaction_count: 0,
-      account_id: accountId,
-    });
+    const imp =
+      existingImport ??
+      store.addCsvImport({
+        filename,
+        file_hash: fileHash,
+        row_count: 0,
+        new_transaction_count: 0,
+        account_id: accountId,
+      });
     return {
       csv_import_id: imp.id,
       filename,
@@ -264,13 +274,15 @@ export async function importGenericCsv(
     hashEntries.map((e) => e.hash)
   );
 
-  const csvImport = store.addCsvImport({
-    filename,
-    file_hash: fileHash,
-    row_count: parsed.length,
-    new_transaction_count: 0,
-    account_id: accountId,
-  });
+  const csvImport =
+    existingImport ??
+    store.addCsvImport({
+      filename,
+      file_hash: fileHash,
+      row_count: parsed.length,
+      new_transaction_count: 0,
+      account_id: accountId,
+    });
 
   const memberId =
     account.owner_type === "personal" && account.household_member_id != null
@@ -280,6 +292,7 @@ export async function importGenericCsv(
   const newTxns: Omit<BudgetTransaction, "id" | "created_at">[] = [];
   let categorizedCount = 0;
   let duplicateCount = 0;
+  let pendingCount = 0;
 
   for (const { hash, index } of hashEntries) {
     if (existingHashes.has(hash)) {
@@ -292,6 +305,7 @@ export async function importGenericCsv(
     const transfer = isInternalTransfer(pt.description);
 
     if (categoryId != null) categorizedCount++;
+    if (pt.is_pending) pendingCount++;
 
     newTxns.push({
       external_hash: hash,
@@ -314,8 +328,13 @@ export async function importGenericCsv(
 
   store.addTransactionsBulk(newTxns);
 
-  const impRecord = store.csvImports.find((i) => i.id === csvImport.id);
-  if (impRecord) impRecord.new_transaction_count = newTxns.length;
+  // Update import record count — only for a freshly created record. When
+  // reconciling pending from an already-seen file we reuse the original record
+  // and leave its count (the original posted import) untouched.
+  if (!existingImport) {
+    const impRecord = store.csvImports.find((i) => i.id === csvImport.id);
+    if (impRecord) impRecord.new_transaction_count = newTxns.length;
+  }
 
   const newCount = newTxns.length;
 
@@ -325,7 +344,7 @@ export async function importGenericCsv(
     total_rows: parsed.length,
     new_transactions: newCount,
     duplicate_transactions: duplicateCount,
-    pending_transactions: 0,
+    pending_transactions: pendingCount,
     categorized_count: categorizedCount,
     uncategorized_count: newCount - categorizedCount,
     errors: [],

@@ -16,7 +16,10 @@ import type {
 // to its debt. Older files open cleanly (load() backfills); once saved at the new
 // version they will not reopen in an older build — the same one-way door every
 // schema bump here creates.
-const CURRENT_VERSION = 3;
+// v4 (2026-09): added `csv_mapping` on accounts, so ongoing CSV imports reuse
+// the column mapping detected at account creation. Older files open cleanly
+// (load() backfills csv_mapping: null).
+const CURRENT_VERSION = 4;
 
 function emptyFile(): BudgetFile {
   return {
@@ -73,7 +76,11 @@ export class BudgetStore {
         `File version ${file.version} is newer than supported version ${CURRENT_VERSION}.`
       );
     }
-    this.accounts = [...file.accounts];
+    // Backfill csv_mapping for accounts that predate stored column mappings.
+    this.accounts = file.accounts.map((a) => ({
+      ...a,
+      csv_mapping: a.csv_mapping ?? null,
+    }));
     this.householdMembers = [...file.household_members];
     this.categories = [...file.categories];
     this.categoryRules = [...file.category_rules];

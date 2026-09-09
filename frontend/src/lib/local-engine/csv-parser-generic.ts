@@ -9,6 +9,7 @@ export interface ColumnMapping {
   debitColumn: string | null;
   creditColumn: string | null;
   categoryColumn: string | null;
+  statusColumn: string | null;
 }
 
 export interface FieldMappingConfig {
@@ -40,6 +41,7 @@ const AMOUNT_PATTERNS = ["amount", "transaction amount"];
 const DEBIT_PATTERNS = ["debit", "withdrawal", "debit amount"];
 const CREDIT_PATTERNS = ["credit", "deposit", "credit amount"];
 const CATEGORY_PATTERNS = ["category", "type"];
+const STATUS_PATTERNS = ["status", "posted", "pending"];
 
 function matchHeader(
   headers: string[],
@@ -60,6 +62,7 @@ export function detectColumnMapping(headers: string[]): ColumnMapping {
   const debitColumn = matchHeader(headers, DEBIT_PATTERNS);
   const creditColumn = matchHeader(headers, CREDIT_PATTERNS);
   const categoryColumn = matchHeader(headers, CATEGORY_PATTERNS);
+  const statusColumn = matchHeader(headers, STATUS_PATTERNS);
 
   return {
     dateColumn,
@@ -68,6 +71,7 @@ export function detectColumnMapping(headers: string[]): ColumnMapping {
     debitColumn,
     creditColumn,
     categoryColumn,
+    statusColumn,
   };
 }
 
@@ -152,13 +156,23 @@ function parseDateToISO(
 export function parseGenericCsv(
   fileContent: string,
   config: FieldMappingConfig,
-  accountType: AccountType
+  _accountType: AccountType,
+  includePending = false
 ): ParsedTransaction[] {
   const rows = parseCsvRows(fileContent);
   const { mapping, amountMode, signConvention } = config;
   const transactions: ParsedTransaction[] = [];
 
   for (const row of rows) {
+    // Pending overlay: mirror the USAA parser — skip pending rows unless the
+    // caller opted in. A status column flags a row "Pending" (case-insensitive);
+    // banks without such a column always yield posted rows.
+    const statusStr = mapping.statusColumn
+      ? (row[mapping.statusColumn] ?? "").trim()
+      : "";
+    const isPending = statusStr.toLowerCase() === "pending";
+    if (isPending && !includePending) continue;
+
     const dateStr = mapping.dateColumn ? (row[mapping.dateColumn] ?? "").trim() : "";
     if (!dateStr) continue;
 
@@ -184,10 +198,6 @@ export function parseGenericCsv(
       amountCents = -amountCents;
     }
 
-    if (accountType === "credit") {
-      amountCents = -amountCents;
-    }
-
     const date = parseDateToISO(dateStr, config.dateFormat);
 
     const sourceCategory = mapping.categoryColumn
@@ -200,7 +210,7 @@ export function parseGenericCsv(
       description,
       amount_cents: amountCents,
       usaa_category: sourceCategory,
-      is_pending: false,
+      is_pending: isPending,
     });
   }
 
