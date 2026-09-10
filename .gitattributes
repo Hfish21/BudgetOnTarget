@@ -1,0 +1,9 @@
+# Normalize line endings on commit; let Git pick the working-tree style.
+* text=auto
+
+# Files executed inside Linux containers must keep LF. A CRLF shebang makes the
+# kernel look for an interpreter named "/bin/sh\r" and fail with
+# "no such file or directory".
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.Dockerfile text eol=lf
