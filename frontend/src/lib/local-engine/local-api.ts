@@ -36,11 +36,22 @@ import { importCsv, importGenericCsv } from "./importer";
 import { parseUsaaCsv } from "./csv-parser";
 import { autoDetectConfig } from "./csv-parser-generic";
 import type { AccountType } from "./types";
+import { logEvent } from "@/lib/logger";
 
 const store = new BudgetStore();
 
 export function getStore(): BudgetStore {
   return store;
+}
+
+/** Privacy-safe activity-log line for a completed CSV import (counts only). */
+function logImport(result: ImportResult): ImportResult {
+  logEvent(
+    "import",
+    `CSV import: ${result.total_rows} rows, ${result.new_transactions} new, ` +
+      `${result.duplicate_transactions} dup, ${result.pending_transactions} pending`
+  );
+  return result;
 }
 
 function txnToResponse(txn: {
@@ -715,13 +726,15 @@ export const localApi = {
       // or a previous auto-detected import): reuse it so the parser matches the
       // file every time.
       if (account.csv_mapping) {
-        return importGenericCsv(
-          store,
-          buffer,
-          file.name,
-          accountId,
-          account.csv_mapping,
-          includePending
+        return logImport(
+          await importGenericCsv(
+            store,
+            buffer,
+            file.name,
+            accountId,
+            account.csv_mapping,
+            includePending
+          )
         );
       }
 
@@ -738,7 +751,9 @@ export const localApi = {
         true
       );
       if (usaaRows.length > 0) {
-        return importCsv(store, buffer, file.name, accountId, includePending);
+        return logImport(
+          await importCsv(store, buffer, file.name, accountId, includePending)
+        );
       }
 
       // Non-USAA file (e.g. all-caps Wells Fargo headers): auto-detect the
@@ -746,13 +761,15 @@ export const localApi = {
       // via the generic parser.
       const { config } = autoDetectConfig(cleanText);
       store.updateAccount(accountId, { csv_mapping: config });
-      return importGenericCsv(
-        store,
-        buffer,
-        file.name,
-        accountId,
-        config,
-        includePending
+      return logImport(
+        await importGenericCsv(
+          store,
+          buffer,
+          file.name,
+          accountId,
+          config,
+          includePending
+        )
       );
     },
 

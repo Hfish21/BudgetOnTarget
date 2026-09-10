@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PrivacyProvider } from "@/components/privacy-provider";
 import { AppShell } from "@/components/layout/app-shell";
 import { StorageProvider } from "@/components/storage-provider";
+import { LoggerInit } from "@/components/logger-init";
 
 export const metadata: Metadata = {
   title: "BudgetOnTarget",
@@ -20,6 +21,7 @@ export default function AppLayout({
 }>) {
   return (
     <StorageProvider>
+      <LoggerInit />
       <PrivacyProvider>
         <AppShell>{children}</AppShell>
       </PrivacyProvider>

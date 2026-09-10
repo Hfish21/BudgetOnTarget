@@ -7,7 +7,9 @@ import { MemberList } from "@/components/settings/member-list";
 import { AccountList } from "@/components/settings/account-list";
 import { DataPortability } from "@/components/settings/data-portability";
 import { Feedback } from "@/components/settings/feedback";
-import { Tag, ListFilter, Users, CreditCard, HardDrive, Lightbulb } from "lucide-react";
+import { UpdateApp } from "@/components/settings/update-app";
+import { ActivityLog } from "@/components/settings/activity-log";
+import { Tag, ListFilter, Users, CreditCard, HardDrive, Lightbulb, Activity } from "lucide-react";
 
 export default function SettingsPage() {
   return (
@@ -49,6 +51,10 @@ export default function SettingsPage() {
             <Lightbulb className="size-3.5" />
             Feedback
           </TabsTrigger>
+          <TabsTrigger value="diagnostics" className="gap-1.5 px-3">
+            <Activity className="size-3.5" />
+            Diagnostics
+          </TabsTrigger>
           </TabsList>
         </div>
 
@@ -74,6 +80,11 @@ export default function SettingsPage() {
 
         <TabsContent value="feedback" className="mt-6">
           <Feedback />
+        </TabsContent>
+
+        <TabsContent value="diagnostics" className="mt-6 space-y-6">
+          <UpdateApp />
+          <ActivityLog />
         </TabsContent>
       </Tabs>
     </div>

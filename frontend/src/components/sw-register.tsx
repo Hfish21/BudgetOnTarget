@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { logEvent } from "@/lib/logger";
 
 /**
  * Registers the service worker and — crucially — keeps the running tab in sync
@@ -24,6 +25,7 @@ export function ServiceWorkerRegister() {
     const onControllerChange = () => {
       if (refreshing || !hadController) return;
       refreshing = true;
+      logEvent("app", "Updated to new version");
       window.location.reload();
     };
     sw.addEventListener("controllerchange", onControllerChange);

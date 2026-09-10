@@ -41,6 +41,7 @@ import {
   type DriveFileRef,
 } from "@/lib/drive/google-drive";
 import { isDriveConfigured } from "@/lib/drive/config";
+import { logEvent } from "@/lib/logger";
 
 interface StorageContextValue {
   dirty: boolean;
@@ -141,6 +142,13 @@ export function StorageProvider({ children }: { children: ReactNode }) {
           store.load(data);
           store.markClean();
           setFileLoaded(true);
+          logEvent(
+            "storage",
+            `Loaded budget v${data.version ?? "?"}: ` +
+              `${data.accounts?.length ?? 0} accounts, ` +
+              `${data.transactions?.length ?? 0} txns, ` +
+              `${data.targets?.length ?? 0} targets`,
+          );
         }
         if (ref) setDriveRef(ref);
         if (handle) localHandle.current = handle;
@@ -196,6 +204,7 @@ export function StorageProvider({ children }: { children: ReactNode }) {
         saveLocation(loc),
       ]);
       setStorageStatus(`Opened ${ref.name} from Google Drive`);
+      logEvent("storage", "Opened from drive");
     },
     [store, markSaved],
   );
@@ -222,6 +231,7 @@ export function StorageProvider({ children }: { children: ReactNode }) {
         saveLocation(loc),
       ]);
       setStorageStatus(`Opened ${res.name} from this device`);
+      logEvent("storage", "Opened from local");
     } catch (e) {
       setStorageStatus(`Couldn't open file: ${(e as Error).message}`);
     } finally {
@@ -272,6 +282,7 @@ export function StorageProvider({ children }: { children: ReactNode }) {
         saveLocation(loc),
       ]);
       setStorageStatus(`Opened ${ref.name} from Google Drive`);
+      logEvent("storage", "Opened from drive");
     } catch (e) {
       if (e instanceof DriveCancelledError) setStorageStatus(null);
       else if (e instanceof DriveAuthError) setStorageStatus(e.message);
@@ -326,6 +337,7 @@ export function StorageProvider({ children }: { children: ReactNode }) {
           setLocation(loc);
           await saveLocation(loc);
           setStorageStatus(`Saved to this device · ${loc.name}`);
+          logEvent("storage", "Saved to local");
           return;
         }
       }
@@ -347,6 +359,7 @@ export function StorageProvider({ children }: { children: ReactNode }) {
           ? `Saved to this device · ${res.name}`
           : `Downloaded ${res.name}`,
       );
+      logEvent("storage", res.handle ? "Saved to local" : "Downloaded file");
     } catch (e) {
       setStorageStatus(`Couldn't save file: ${(e as Error).message}`);
     } finally {
@@ -375,10 +388,12 @@ export function StorageProvider({ children }: { children: ReactNode }) {
           saveLocation(loc),
         ]);
         setStorageStatus(`Saved to Google Drive · ${ref.name}`);
+        logEvent("storage", "Saved to drive");
       } catch (e) {
         if (e instanceof DriveConflictError) {
           setDriveConflict(e.remote);
           setStorageStatus(null);
+          logEvent("storage", "Save conflict detected", "warn");
         } else if (e instanceof DriveCancelledError) {
           setStorageStatus(null);
         } else if (e instanceof DriveAuthError) {
@@ -480,6 +495,7 @@ export function StorageProvider({ children }: { children: ReactNode }) {
         if (meta.modifiedTime === driveRef.modifiedTime) return;
         if (dirtyRef.current) {
           setRemoteUpdate(meta); // let the user decide
+          logEvent("storage", "Newer drive version detected", "warn");
         } else {
           const data = await downloadBudget(token, driveRef.fileId);
           store.load(data);
@@ -487,6 +503,7 @@ export function StorageProvider({ children }: { children: ReactNode }) {
           setDriveRef(meta);
           await saveDriveRef(meta);
           setStorageStatus(`Refreshed to the latest from Drive · ${meta.name}`);
+          logEvent("storage", "Refreshed from drive (another device)");
         }
       } catch {
         // silent token unavailable / offline — skip quietly

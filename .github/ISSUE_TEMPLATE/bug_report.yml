@@ -42,3 +42,11 @@ body:
       description: Pre-filled automatically when reporting from the app. Edit if needed.
     validations:
       required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Recent activity log
+      description: Auto-filled from the app when "Attach recent activity log" is checked. Contains no financial data — just recent app events (imports, saves, errors). Leave blank if reporting outside the app.
+      render: text
+    validations:
+      required: false

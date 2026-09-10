@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { feedbackTextareaClass } from "@/components/settings/feedback-shared";
 import { newIssueUrl, openNewIssue, TITLE_MAX, TEXT_MAX } from "@/lib/github";
+import { formatLogForReport } from "@/lib/logger";
 
 const ISSUE_TEMPLATE = "bug_report.yml";
 
@@ -31,25 +32,32 @@ export function BugReport() {
   const [what, setWhat] = useState("");
   const [steps, setSteps] = useState("");
   const [expected, setExpected] = useState("");
+  const [attachLogs, setAttachLogs] = useState(true);
 
   const canSubmit = title.trim().length > 0 && what.trim().length > 0;
 
   function handleSubmit() {
     if (!canSubmit) return;
-    const url = newIssueUrl(ISSUE_TEMPLATE, {
+    const fields: Record<string, string> = {
       title: `[Bug]: ${title.trim()}`.slice(0, TITLE_MAX + 7),
       what: what.trim(),
       steps: steps.trim(),
       expected: expected.trim(),
       // Auto-captured so reporters don't have to know their browser version.
       environment: environmentInfo().slice(0, TEXT_MAX),
-    });
+    };
+    if (attachLogs) {
+      const logs = formatLogForReport(TEXT_MAX);
+      if (logs) fields.logs = logs;
+    }
+    const url = newIssueUrl(ISSUE_TEMPLATE, fields);
     openNewIssue(url);
     setOpen(false);
     setTitle("");
     setWhat("");
     setSteps("");
     setExpected("");
+    setAttachLogs(true);
   }
 
   return (
@@ -141,6 +149,22 @@ export function BugReport() {
                   className={feedbackTextareaClass}
                 />
               </div>
+
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={attachLogs}
+                  onChange={(e) => setAttachLogs(e.target.checked)}
+                  className="mt-0.5 size-4 accent-primary"
+                />
+                <span>
+                  Attach recent activity log
+                  <span className="block text-xs text-muted-foreground">
+                    Recent app events (imports, saves, errors). No financial
+                    data — helps with debugging.
+                  </span>
+                </span>
+              </label>
             </div>
 
             <DialogFooter showCloseButton>
