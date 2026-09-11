@@ -116,3 +116,66 @@ export function parseUsaaCsv(
 
   return transactions;
 }
+
+/** Convert an MM/DD/YYYY date to YYYY-MM-DD (2-digit year → 20xx). */
+function mmddyyyyToISO(dateStr: string): string {
+  const trimmed = dateStr.trim();
+  const parts = trimmed.split(/[/\-.]/);
+  if (parts.length < 3) return trimmed;
+  const [month, day, year] = parts;
+  const fullYear = year.length === 2 ? `20${year}` : year;
+  return `${fullYear}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+}
+
+/**
+ * Native Wells Fargo CSV parser. WF exports (checking AND credit) share one
+ * format: DATE, DESCRIPTION, AMOUNT, CHECK #, STATUS — dates MM/DD/YYYY, a
+ * single AMOUNT column, STATUS is "Pending" or "Posted". Headers are matched
+ * case-insensitively/trimmed so minor casing variations still parse.
+ */
+export function parseWellsFargoCsv(
+  fileContent: string,
+  accountType: AccountType,
+  includePending = false
+): ParsedTransaction[] {
+  void accountType; // WF uses no per-account-type sign flip (see amount comment)
+  const rows = parseCsvRows(fileContent);
+  const transactions: ParsedTransaction[] = [];
+
+  // Match columns case-insensitively and trimmed.
+  function get(row: Record<string, string>, name: string): string {
+    const target = name.toLowerCase();
+    for (const key of Object.keys(row)) {
+      if (key.trim().toLowerCase() === target) return row[key] ?? "";
+    }
+    return "";
+  }
+
+  for (const row of rows) {
+    const status = get(row, "status").trim();
+    const isPending = status.toLowerCase() === "pending";
+    if (isPending && !includePending) continue;
+
+    const dateStr = get(row, "date").trim();
+    if (!dateStr) continue;
+
+    const rawDescription = get(row, "description").trim();
+    const description = cleanDescription(rawDescription);
+
+    // WF lists charges negative for checking and credit alike; unlike USAA, no
+    // credit-account sign flip. (Assumption for credit — confirmed for checking;
+    // revisit if a real WF credit export differs.)
+    const amountCents = dollarsToCents(get(row, "amount") || "0");
+
+    transactions.push({
+      date: mmddyyyyToISO(dateStr),
+      raw_description: rawDescription,
+      description,
+      amount_cents: amountCents,
+      usaa_category: null,
+      is_pending: isPending,
+    });
+  }
+
+  return transactions;
+}

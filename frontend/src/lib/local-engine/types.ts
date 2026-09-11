@@ -7,6 +7,7 @@ export type MatchType = "substring" | "regex";
 export type AccountType = "checking" | "credit" | "savings";
 export type OwnerType = "joint" | "personal";
 export type TargetStatus = "on_target" | "in_tolerance" | "off_target";
+export type BankId = "usaa" | "wells_fargo";
 
 export interface BudgetAccount {
   id: number;
@@ -23,6 +24,12 @@ export interface BudgetAccount {
    * Null/absent for USAA accounts, which use the built-in USAA parser.
    */
   csv_mapping?: FieldMappingConfig | null;
+  /**
+   * Which native bank parser handles this account's CSV exports. When set, it
+   * takes precedence over `csv_mapping` at import time. Null/absent for accounts
+   * that rely on auto-detection + a stored column mapping.
+   */
+  bank?: BankId | null;
 }
 
 export interface BudgetHouseholdMember {

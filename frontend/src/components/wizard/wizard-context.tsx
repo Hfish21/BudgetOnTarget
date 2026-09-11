@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { AccountType, SpendGroup, Direction } from "@/lib/local-engine/types";
+import type { AccountType, SpendGroup, Direction, BankId } from "@/lib/local-engine/types";
 import type { FieldMappingConfig } from "@/lib/local-engine/csv-parser-generic";
 import type { ImportResult } from "@/lib/local-engine/importer";
 
@@ -22,6 +22,7 @@ export interface WizardCsvFile {
     name: string;
     institution: string;
     type: AccountType;
+    bank: "auto" | BankId;
   } | null;
   imported: boolean;
   importResult: ImportResult | null;

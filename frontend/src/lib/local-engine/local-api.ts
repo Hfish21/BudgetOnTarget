@@ -33,7 +33,7 @@ import {
 } from "./target-engine";
 import { categorize, recategorizeAll } from "./categorizer";
 import { importCsv, importGenericCsv } from "./importer";
-import { parseUsaaCsv } from "./csv-parser";
+import { parseUsaaCsv, parseWellsFargoCsv } from "./csv-parser";
 import { autoDetectConfig } from "./csv-parser-generic";
 import type { AccountType } from "./types";
 import { logEvent } from "@/lib/logger";
@@ -721,6 +721,34 @@ export const localApi = {
       const buffer = await file.arrayBuffer();
       const account = store.accountById(accountId);
       if (!account) throw new Error(`Account with id ${accountId} not found`);
+
+      // A native bank parser was chosen at account setup. It takes precedence
+      // over any csv_mapping — WF/USAA files are parsed by their dedicated
+      // parser, which reuses the shared dedup/hash/pending pipeline.
+      if (account.bank === "wells_fargo") {
+        return logImport(
+          await importCsv(
+            store,
+            buffer,
+            file.name,
+            accountId,
+            includePending,
+            parseWellsFargoCsv
+          )
+        );
+      }
+      if (account.bank === "usaa") {
+        return logImport(
+          await importCsv(
+            store,
+            buffer,
+            file.name,
+            accountId,
+            includePending,
+            parseUsaaCsv
+          )
+        );
+      }
 
       // Account already has a saved column mapping (from the onboarding wizard
       // or a previous auto-detected import): reuse it so the parser matches the
