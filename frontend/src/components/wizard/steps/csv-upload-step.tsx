@@ -6,7 +6,8 @@ import { Upload, Plus } from "lucide-react";
 import { useWizard } from "../wizard-context";
 import { CsvFileCard } from "./csv-file-card";
 import { autoDetectConfig } from "@/lib/local-engine/csv-parser-generic";
-import { importGenericCsv } from "@/lib/local-engine/importer";
+import { importCsv, importGenericCsv } from "@/lib/local-engine/importer";
+import { parseUsaaCsv, parseWellsFargoCsv } from "@/lib/local-engine/csv-parser";
 import { getStore } from "@/lib/local-engine";
 
 export function CsvUploadStep() {
@@ -72,25 +73,40 @@ export function CsvUploadStep() {
           return;
         }
 
+        const bank = csvFile.account.bank ?? "auto";
+        const isNativeBank = bank !== "auto";
+
         const account = store.addAccount({
           name: csvFile.account.name,
           institution: csvFile.account.institution,
           account_type: csvFile.account.type,
           owner_type: "joint",
           household_member_id: null,
-          csv_mapping: csvFile.mapping,
+          // Native bank: store the bank (parser routes on it), no column mapping.
+          // Auto-detect: store the detected mapping, no bank.
+          csv_mapping: isNativeBank ? null : csvFile.mapping,
+          bank: isNativeBank ? bank : null,
         });
 
         const encoder = new TextEncoder();
         const buffer = encoder.encode(csvFile.rawContent).buffer as ArrayBuffer;
 
-        const result = await importGenericCsv(
-          store,
-          buffer,
-          csvFile.file.name,
-          account.id,
-          csvFile.mapping
-        );
+        const result = isNativeBank
+          ? await importCsv(
+              store,
+              buffer,
+              csvFile.file.name,
+              account.id,
+              false,
+              bank === "wells_fargo" ? parseWellsFargoCsv : parseUsaaCsv
+            )
+          : await importGenericCsv(
+              store,
+              buffer,
+              csvFile.file.name,
+              account.id,
+              csvFile.mapping
+            );
 
         updateCsvFile(csvFile.id, {
           imported: true,
@@ -108,9 +124,11 @@ export function CsvUploadStep() {
 
   const allReady = csvFiles.length > 0 && csvFiles.every((f) => {
     if (f.imported) return true;
+    if (!f.account?.name?.trim()) return false;
+    // Native bank parser needs no column mapping.
+    if (f.account.bank && f.account.bank !== "auto") return true;
     const m = f.mapping.mapping;
     return (
-      f.account?.name?.trim() &&
       m.dateColumn &&
       m.descriptionColumn &&
       (f.mapping.amountMode === "single"

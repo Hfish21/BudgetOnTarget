@@ -1,7 +1,7 @@
 import type { BudgetStore } from "./store";
 import type { AccountType, BudgetTransaction } from "./types";
 import { categorize } from "./categorizer";
-import { parseUsaaCsv } from "./csv-parser";
+import { parseUsaaCsv, type ParsedTransaction } from "./csv-parser";
 import { parseGenericCsv, type FieldMappingConfig } from "./csv-parser-generic";
 import { computeFileHash, computeTransactionHash } from "./hasher";
 
@@ -34,7 +34,12 @@ export async function importCsv(
   fileContent: ArrayBuffer,
   filename: string,
   accountId: number,
-  includePending = false
+  includePending = false,
+  parser: (
+    text: string,
+    accountType: AccountType,
+    includePending: boolean
+  ) => ParsedTransaction[] = parseUsaaCsv
 ): Promise<ImportResult> {
   const fileHash = await computeFileHash(fileContent);
   const existingImport = store.csvImports.find((i) => i.file_hash === fileHash);
@@ -67,7 +72,7 @@ export async function importCsv(
 
   const text = new TextDecoder("utf-8").decode(fileContent);
   const cleanText = text.startsWith("﻿") ? text.slice(1) : text;
-  const parsed = parseUsaaCsv(
+  const parsed = parser(
     cleanText,
     account.account_type as AccountType,
     includePending

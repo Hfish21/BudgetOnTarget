@@ -19,7 +19,10 @@ import type {
 // v4 (2026-09): added `csv_mapping` on accounts, so ongoing CSV imports reuse
 // the column mapping detected at account creation. Older files open cleanly
 // (load() backfills csv_mapping: null).
-const CURRENT_VERSION = 4;
+// v5 (2026-09): added `bank` on accounts, selecting a native bank parser (USAA /
+// Wells Fargo) that takes precedence over csv_mapping. Older files open cleanly
+// (load() backfills bank: null).
+const CURRENT_VERSION = 5;
 
 function emptyFile(): BudgetFile {
   return {
@@ -76,10 +79,11 @@ export class BudgetStore {
         `File version ${file.version} is newer than supported version ${CURRENT_VERSION}.`
       );
     }
-    // Backfill csv_mapping for accounts that predate stored column mappings.
+    // Backfill csv_mapping (v4) and bank (v5) for accounts that predate them.
     this.accounts = file.accounts.map((a) => ({
       ...a,
       csv_mapping: a.csv_mapping ?? null,
+      bank: a.bank ?? null,
     }));
     this.householdMembers = [...file.household_members];
     this.categories = [...file.categories];

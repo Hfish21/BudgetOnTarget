@@ -10,7 +10,7 @@ import { ChevronDown, ChevronUp, FileText, Trash2 } from "lucide-react";
 import { FieldMapper } from "./field-mapper";
 import { CsvPreviewTable } from "./csv-preview-table";
 import type { WizardCsvFile } from "../wizard-context";
-import type { AccountType } from "@/lib/local-engine/types";
+import type { AccountType, BankId } from "@/lib/local-engine/types";
 import type { FieldMappingConfig } from "@/lib/local-engine/csv-parser-generic";
 
 interface CsvFileCardProps {
@@ -26,23 +26,37 @@ export function CsvFileCard({ csvFile, onUpdate, onRemove }: CsvFileCardProps) {
     name: "",
     institution: "",
     type: "checking" as AccountType,
+    bank: "auto" as "auto" | BankId,
   };
 
   function updateAccount(updates: Partial<typeof account>) {
     onUpdate({ account: { ...account, ...updates } });
   }
 
+  function updateBank(bank: "auto" | BankId) {
+    const updates: Partial<typeof account> = { bank };
+    // Prefill institution from the chosen bank when it's still blank.
+    if (bank !== "auto" && account.institution.trim() === "") {
+      updates.institution = bank === "wells_fargo" ? "Wells Fargo" : "USAA";
+    }
+    updateAccount(updates);
+  }
+
   function updateMapping(config: FieldMappingConfig) {
     onUpdate({ mapping: config });
   }
 
+  const isNativeBank = account.bank !== "auto";
+
   const isValid =
     account.name.trim() !== "" &&
-    csvFile.mapping.mapping.dateColumn &&
-    csvFile.mapping.mapping.descriptionColumn &&
-    (csvFile.mapping.amountMode === "single"
-      ? csvFile.mapping.mapping.amountColumn
-      : csvFile.mapping.mapping.debitColumn || csvFile.mapping.mapping.creditColumn);
+    (isNativeBank ||
+      (!!csvFile.mapping.mapping.dateColumn &&
+        !!csvFile.mapping.mapping.descriptionColumn &&
+        (csvFile.mapping.amountMode === "single"
+          ? !!csvFile.mapping.mapping.amountColumn
+          : !!csvFile.mapping.mapping.debitColumn ||
+            !!csvFile.mapping.mapping.creditColumn)));
 
   return (
     <Card className={csvFile.imported ? "border-green-500/30" : ""}>
@@ -88,6 +102,20 @@ export function CsvFileCard({ csvFile, onUpdate, onRemove }: CsvFileCardProps) {
         <CardContent className="space-y-6">
           <div className="space-y-3">
             <h4 className="text-sm font-medium">Account</h4>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Bank</Label>
+              <select
+                value={account.bank}
+                onChange={(e) =>
+                  updateBank(e.target.value as "auto" | BankId)
+                }
+                className="h-8 w-full rounded-lg border border-input bg-card px-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="auto">Auto-detect (recommended)</option>
+                <option value="wells_fargo">Wells Fargo</option>
+                <option value="usaa">USAA</option>
+              </select>
+            </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">
@@ -126,22 +154,31 @@ export function CsvFileCard({ csvFile, onUpdate, onRemove }: CsvFileCardProps) {
             </div>
           </div>
 
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium">Column mapping</h4>
-            <FieldMapper
-              headers={csvFile.headers}
-              config={csvFile.mapping}
-              onChange={updateMapping}
-            />
-          </div>
+          {isNativeBank ? (
+            <p className="text-xs text-muted-foreground">
+              {account.bank === "wells_fargo" ? "Wells Fargo" : "USAA"} files are
+              parsed automatically.
+            </p>
+          ) : (
+            <>
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium">Column mapping</h4>
+                <FieldMapper
+                  headers={csvFile.headers}
+                  config={csvFile.mapping}
+                  onChange={updateMapping}
+                />
+              </div>
 
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium">Preview</h4>
-            <CsvPreviewTable
-              sampleRows={csvFile.sampleRows}
-              config={csvFile.mapping}
-            />
-          </div>
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium">Preview</h4>
+                <CsvPreviewTable
+                  sampleRows={csvFile.sampleRows}
+                  config={csvFile.mapping}
+                />
+              </div>
+            </>
+          )}
 
           {csvFile.importResult && (
             <div className="rounded-lg border border-green-500/30 bg-green-500/5 p-3">
