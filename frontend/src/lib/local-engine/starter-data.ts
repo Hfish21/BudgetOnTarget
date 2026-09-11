@@ -156,6 +156,7 @@ export function installStarterData(store: BudgetStore): Map<string, number> {
     const created = store.addCategory({
       name: cat.name,
       parent_category_id: null,
+      spend_group: cat.spendGroup,
     });
     categoryMap.set(cat.name, created.id);
   }

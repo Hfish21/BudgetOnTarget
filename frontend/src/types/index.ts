@@ -58,6 +58,12 @@ export interface MonthStatus {
 export interface DashboardResponse {
   period: { year: number; month: number; label: string };
   assessments: TargetAssessment[];
+  /**
+   * Actual money-in / money-out (cents) for the period, from categorized
+   * transactions — the source for the dashboard's big numbers. Independent of
+   * whether targets exist; the target assessments supply the "vs target" overlay.
+   */
+  summary: { money_in: number; money_out: number };
 }
 
 export interface CumulativeDataPoint {
@@ -140,6 +146,7 @@ export interface Category {
   id: number;
   name: string;
   parent_category_id: number | null;
+  spend_group: SpendGroup;
   transaction_count: number;
 }
 

@@ -125,7 +125,10 @@ function DashboardContent() {
         </p>
       </div>
 
-      <NetSummary assessments={assessments} />
+      <NetSummary
+        summary={dashboard?.summary ?? { money_in: 0, money_out: 0 }}
+        assessments={assessments}
+      />
 
       <section ref={chartRef}>
         <GroupCumulativeChart

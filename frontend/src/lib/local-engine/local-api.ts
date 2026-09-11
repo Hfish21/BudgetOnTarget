@@ -23,6 +23,7 @@ import { assessDebt, scenarioDebt, requiredPaymentForMonths } from "./debt-engin
 import {
   assessAllTargets,
   assessTarget,
+  computeMonthActuals,
   formatCents,
   getAvailableMonths,
   getCumulativeDaily,
@@ -164,12 +165,17 @@ export const localApi = {
     ): Promise<DashboardResponse> => {
       const assessments = assessAllTargets(store, year, month);
       const available = getAvailableMonths(store);
+      const actuals = computeMonthActuals(store, year, month);
 
       return {
         period: {
           year,
           month,
           label: `${MONTH_NAMES[month]} ${year}`,
+        },
+        summary: {
+          money_in: actuals.moneyIn,
+          money_out: actuals.moneyOut,
         },
         assessments: assessments.map((a) => {
           const target = store.targetById(a.target_id)!;
@@ -436,6 +442,7 @@ export const localApi = {
         id: c.id,
         name: c.name,
         parent_category_id: c.parent_category_id,
+        spend_group: c.spend_group,
         transaction_count: store.transactions.filter(
           (t) => t.category_id === c.id
         ).length,
@@ -445,18 +452,38 @@ export const localApi = {
     create: async (body: {
       name: string;
       parent_category_id?: number | null;
+      spend_group?: SpendGroup;
     }): Promise<Category> => {
       const existing = store.categories.find((c) => c.name === body.name);
       if (existing) throw new Error(`Category '${body.name}' already exists.`);
       const cat = store.addCategory({
         name: body.name,
         parent_category_id: body.parent_category_id ?? null,
+        spend_group: body.spend_group,
       });
       return {
         id: cat.id,
         name: cat.name,
         parent_category_id: cat.parent_category_id,
+        spend_group: cat.spend_group,
         transaction_count: 0,
+      };
+    },
+
+    update: async (
+      id: number,
+      body: { spend_group?: SpendGroup; name?: string }
+    ): Promise<Category> => {
+      const cat = store.updateCategory(id, body);
+      if (!cat) throw new Error("Category not found");
+      return {
+        id: cat.id,
+        name: cat.name,
+        parent_category_id: cat.parent_category_id,
+        spend_group: cat.spend_group,
+        transaction_count: store.transactions.filter(
+          (t) => t.category_id === cat.id
+        ).length,
       };
     },
 
