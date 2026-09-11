@@ -14,7 +14,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Trash2, Plus, Tag, PackageOpen } from "lucide-react";
-import type { Category } from "@/types";
+import type { Category, SpendGroup } from "@/types";
 
 export function CategoryList() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -47,6 +47,19 @@ export function CategoryList() {
       fetchCategories();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add category");
+    }
+  };
+
+  const handleGroupChange = async (cat: Category, group: SpendGroup) => {
+    // Optimistic: reflect the new lane immediately, then persist.
+    setCategories((prev) =>
+      prev.map((c) => (c.id === cat.id ? { ...c, spend_group: group } : c))
+    );
+    try {
+      await api.categories.update(cat.id, { spend_group: group });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update category");
+      fetchCategories();
     }
   };
 
@@ -108,14 +121,32 @@ export function CategoryList() {
                   {cat.transaction_count.toLocaleString()} txns
                 </span>
               </div>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => setDeleteTarget(cat)}
-              >
-                <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
-              </Button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <label className="sr-only" htmlFor={`group-${cat.id}`}>
+                  Spend group for {cat.name}
+                </label>
+                <select
+                  id={`group-${cat.id}`}
+                  value={cat.spend_group}
+                  onChange={(e) =>
+                    handleGroupChange(cat, e.target.value as SpendGroup)
+                  }
+                  className="h-7 rounded-md border border-input bg-card px-2 text-xs outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="income">Income</option>
+                  <option value="necessary">Necessary</option>
+                  <option value="discretionary">Discretionary</option>
+                  <option value="anomalous">Anomalous</option>
+                </select>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => setDeleteTarget(cat)}
+                >
+                  <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
+                </Button>
+              </div>
             </div>
           ))}
         </div>

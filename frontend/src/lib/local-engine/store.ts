@@ -9,7 +9,9 @@ import type {
   BudgetCsvImport,
   BudgetTag,
   BudgetDebt,
+  SpendGroup,
 } from "./types";
+import { CATEGORY_SPEND_GROUPS } from "./starter-data";
 
 // v2 (2026-08): added `debts` for the Debt Trajectory feature.
 // v3 (2026-08): added `debt_id` on targets, linking a "pay toward a card" target
@@ -22,7 +24,11 @@ import type {
 // v5 (2026-09): added `bank` on accounts, selecting a native bank parser (USAA /
 // Wells Fargo) that takes precedence over csv_mapping. Older files open cleanly
 // (load() backfills bank: null).
-const CURRENT_VERSION = 5;
+// v6 (2026-09): added `spend_group` on categories, so the dashboard's Money In /
+// Money Out reflect actual categorized transactions by lane (targets stay the
+// overlay). Older files open cleanly — load() backfills each category's group
+// from a matching target, else the starter name→group map, else "discretionary".
+const CURRENT_VERSION = 6;
 
 function emptyFile(): BudgetFile {
   return {
@@ -86,7 +92,22 @@ export class BudgetStore {
       bank: a.bank ?? null,
     }));
     this.householdMembers = [...file.household_members];
-    this.categories = [...file.categories];
+    // Backfill spend_group (v6) on categories that predate it: prefer a target
+    // scoped to this category, else the starter name→group map, else discretionary.
+    const targetGroupByCat = new Map<number, SpendGroup>();
+    for (const t of file.targets) {
+      if (t.category_id != null && !targetGroupByCat.has(t.category_id)) {
+        targetGroupByCat.set(t.category_id, t.spend_group);
+      }
+    }
+    this.categories = file.categories.map((c) => ({
+      ...c,
+      spend_group:
+        c.spend_group ??
+        targetGroupByCat.get(c.id) ??
+        CATEGORY_SPEND_GROUPS[c.name] ??
+        "discretionary",
+    }));
     this.categoryRules = [...file.category_rules];
     // Backfill debt_id for targets that predate card-payment targets.
     this.targets = file.targets.map((t) => ({ ...t, debt_id: t.debt_id ?? null }));
@@ -198,13 +219,29 @@ export class BudgetStore {
 
   // --- CRUD: Categories ---
 
-  addCategory(data: Omit<BudgetCategory, "id" | "created_at">): BudgetCategory {
+  addCategory(
+    data: Omit<BudgetCategory, "id" | "created_at" | "spend_group"> & {
+      spend_group?: SpendGroup;
+    }
+  ): BudgetCategory {
     const cat: BudgetCategory = {
       ...data,
+      spend_group: data.spend_group ?? "discretionary",
       id: this._nextId(this.categories),
       created_at: new Date().toISOString(),
     };
     this.categories.push(cat);
+    this._notify();
+    return cat;
+  }
+
+  updateCategory(
+    id: number,
+    data: Partial<BudgetCategory>
+  ): BudgetCategory | undefined {
+    const cat = this.categoryById(id);
+    if (!cat) return undefined;
+    Object.assign(cat, data);
     this._notify();
     return cat;
   }

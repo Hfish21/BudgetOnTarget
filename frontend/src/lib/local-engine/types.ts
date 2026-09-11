@@ -42,6 +42,14 @@ export interface BudgetCategory {
   id: number;
   name: string;
   parent_category_id: number | null;
+  /**
+   * Which lane this category's transactions belong to on the dashboard. Added
+   * in v6 so Money In / Money Out reflect actual categorized transactions
+   * (targets remain the "vs target" overlay). Older files backfill it in
+   * load(): a matching target's group, else the starter name→group map, else
+   * "discretionary".
+   */
+  spend_group: SpendGroup;
   created_at: string;
 }
 

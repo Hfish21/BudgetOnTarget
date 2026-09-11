@@ -181,6 +181,47 @@ export function assessAllTargets(
     .map((t) => assessTarget(store, t, start, end));
 }
 
+/**
+ * Actual money-in / money-out for a month, from categorized transactions —
+ * independent of whether any budget targets exist. This is the dashboard's
+ * source of truth for the big Money In / Money Out numbers; targets remain the
+ * "vs target" overlay.
+ *
+ * Filtering mirrors the target engine (date range, drop internal transfers and
+ * excluded rows) but INCLUDES pending rows, consistent with how targets count
+ * them. A transaction's lane comes from its category's spend_group; an
+ * uncategorized row (category_id null) is treated as spending, never income.
+ *
+ * - moneyIn  = sum of positive amounts whose category lane is "income".
+ * - moneyOut = sum of |amount| for negative amounts whose lane is NOT income
+ *              (uncategorized negatives included).
+ * Both returned in cents.
+ */
+export function computeMonthActuals(
+  store: BudgetStore,
+  year: number,
+  month: number
+): { moneyIn: number; moneyOut: number } {
+  const [start, end] = getMonthBounds(year, month);
+  const groupByCat = new Map<number, string>();
+  for (const c of store.categories) groupByCat.set(c.id, c.spend_group);
+
+  let moneyIn = 0;
+  let moneyOut = 0;
+  for (const t of store.transactions) {
+    if (t.date < start || t.date > end) continue;
+    if (t.is_internal_transfer || t.is_excluded) continue;
+    const group =
+      t.category_id != null ? groupByCat.get(t.category_id) : undefined;
+    if (group === "income") {
+      if (t.amount_cents > 0) moneyIn += t.amount_cents;
+    } else if (t.amount_cents < 0) {
+      moneyOut += Math.abs(t.amount_cents);
+    }
+  }
+  return { moneyIn, moneyOut };
+}
+
 const MONTH_NAMES = [
   "", "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
