@@ -87,6 +87,10 @@ export default function SettingsPage() {
           <ActivityLog />
         </TabsContent>
       </Tabs>
+
+      <p className="text-center text-xs text-muted-foreground">
+        BudgetOnTarget — runs entirely in your browser.
+      </p>
     </div>
   );
 }
