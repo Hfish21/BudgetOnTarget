@@ -180,13 +180,22 @@ export function TargetForm({ target, onSave, onCancel }: TargetFormProps) {
                 }
                 className="h-8 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="">All Categories</option>
+                <option value="">
+                  Everything else in {spendGroup}
+                </option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
                   </option>
                 ))}
               </select>
+              {categoryId == null && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Catch-all: covers <strong>{spendGroup}</strong> spending that
+                  no other target claims. Pick a category above if you meant to
+                  budget one specific thing.
+                </p>
+              )}
             </div>
 
             <div>

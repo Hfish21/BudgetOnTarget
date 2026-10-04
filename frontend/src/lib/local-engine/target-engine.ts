@@ -54,22 +54,37 @@ function buildBaseFilter(
 
   if (target.category_id != null) {
     txns = txns.filter((t) => t.category_id === target.category_id);
-  } else if (
-    target.spend_group === "discretionary" ||
-    target.spend_group === "anomalous"
-  ) {
-    const excludedCatIds = new Set(
+  } else {
+    // "Everything else" target: covers the spend in this lane that no other
+    // target already claims. The dashboard sums a lane's target cards as peers
+    // to produce the lane total, so this MUST NOT overlap its siblings --
+    // otherwise a category with its own target is counted twice and the lane
+    // header overstates. Siblings + leftover == the lane's true total.
+    //
+    // The lane comes from each CATEGORY's `spend_group` (added in v6, and what
+    // computeMonthActuals already uses). Before v6 it was inferred from which
+    // targets happened to exist, which was wrong two ways: a `necessary`
+    // category with no target of its own (Utilities, Phone/Internet) leaked
+    // into a `discretionary` bucket, and creating an unrelated target silently
+    // changed what this one counted.
+    //
+    // Uncategorized rows belong to no lane and are surfaced separately, so
+    // they stay out.
+    const laneByCat = new Map(
+      store.categories.map((c) => [c.id, c.spend_group])
+    );
+    const claimedByOther = new Set(
       store.targets
         .filter(
-          (t) =>
-            (t.spend_group === "necessary" || t.spend_group === "income") &&
-            t.is_active &&
-            t.category_id != null
+          (o) => o.id !== target.id && o.is_active && o.category_id != null
         )
-        .map((t) => t.category_id!)
+        .map((o) => o.category_id!)
     );
     txns = txns.filter(
-      (t) => t.category_id == null || !excludedCatIds.has(t.category_id)
+      (t) =>
+        t.category_id != null &&
+        laneByCat.get(t.category_id) === target.spend_group &&
+        !claimedByOther.has(t.category_id)
     );
   }
 
