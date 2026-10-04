@@ -444,6 +444,29 @@ function forwardCurve(
   return null;
 }
 
+/**
+ * The plan balance to measure an in-progress month against.
+ *
+ * `plannedByMonth` holds END-of-month balances, so the current month's entry
+ * already assumes this month's payment landed. Until the month is over that is
+ * not a fair comparison, so fall back to the previous (completed) month, or to
+ * the anchor balance when the current month IS the anchor month.
+ */
+function plannedBalanceForStatus(
+  plannedByMonth: Map<string, number>,
+  currentKey: string,
+  anchor: YM,
+  anchorBalanceCents: number
+): number {
+  if (monthIndex(parseYM(currentKey)) <= monthIndex(anchor)) {
+    return anchorBalanceCents;
+  }
+  const prevKey = monthKey(addMonths(parseYM(currentKey), -1));
+  if (plannedByMonth.has(prevKey)) return plannedByMonth.get(prevKey)!;
+  // Past the plan's payoff month: the plan says the card should be clear.
+  return 0;
+}
+
 function classify(gapCents: number, toleranceCents: number): DebtStatus {
   if (gapCents > toleranceCents) return "ahead";
   if (gapCents < -toleranceCents) return "behind";
@@ -497,7 +520,19 @@ export function assessDebt(
   const forwardSim = simulatePayoff(currentBalance, r, planPayment, futureSpend);
 
   // Status: compare where the plan says the balance should be now vs actual.
-  const expectedNow = plannedByMonth.has(currentKey) ? plannedByMonth.get(currentKey)! : 0;
+  //
+  // The plan's value for a month is its END-of-month balance -- it already
+  // credits that month's payment. The current month is still in progress, so
+  // measuring against it marks every card "behind" until the payment posts,
+  // then "ahead" again once it does. The status flipped with the calendar
+  // rather than with anything the user did. Measure against the last COMPLETED
+  // month instead (the anchor balance when no month has completed yet).
+  const expectedNow = plannedBalanceForStatus(
+    plannedByMonth,
+    currentKey,
+    anchor,
+    debt.anchor_balance_cents
+  );
   const toleranceCents = Math.max(
     Math.round(currentBalance * r),
     Math.round(debt.anchor_balance_cents * 0.01),
@@ -506,9 +541,23 @@ export function assessDebt(
   const gapCents = expectedNow - currentBalance;
   const status: DebtStatus = isPaidOff ? "ahead" : classify(gapCents, toleranceCents);
 
+  // Payoff-date drift compares the projection against the plan run forward from
+  // the SAME calendar point -- the plan's balance entering this month -- rather
+  // than against the baseline measured from the anchor. Both lines then start in
+  // the same month under the same accounting, so the difference reflects how far
+  // the actual balance sits from plan, not how far into the month we are.
+  // (`baselinePayoffKey` still drives the "Ideal (from start)" chart line.)
+  const planFromNowPayoffKey = fillForward(
+    expectedNow,
+    actual.currentYM,
+    r,
+    planPayment,
+    0,
+    new Map<string, number>()
+  );
   const dateDriftMonths =
-    baselinePayoffKey != null && projectedPayoffKey != null
-      ? monthDiff(baselinePayoffKey, projectedPayoffKey)
+    planFromNowPayoffKey != null && projectedPayoffKey != null
+      ? monthDiff(planFromNowPayoffKey, projectedPayoffKey)
       : null;
 
   // Assemble the chart curve across the full span.
@@ -529,10 +578,17 @@ export function assessDebt(
     });
   }
 
-  // Per-month history strip: each actual month vs the plan for that month.
+  // Per-month history strip: each actual month vs the plan for that month. The
+  // in-progress month gets the same last-completed-month reference as `status`,
+  // so the strip and the headline agree.
   const months: DebtMonthHistory[] = [];
   for (const [key, actualBalance] of actual.actualByMonth) {
-    const plannedBalance = plannedByMonth.has(key) ? plannedByMonth.get(key)! : 0;
+    const plannedBalance =
+      key === currentKey
+        ? expectedNow
+        : plannedByMonth.has(key)
+          ? plannedByMonth.get(key)!
+          : 0;
     const monthGap = plannedBalance - actualBalance;
     months.push({
       month_key: key,
