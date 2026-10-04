@@ -313,17 +313,21 @@ export const localApi = {
         const catId = Number(params.category_id);
         txns = txns.filter((t) => t.category_id === catId);
       } else if (params.spend_group != null) {
+        // A lane holds every category in that spend group, whether or not a
+        // target happens to exist for it. Pre-v6 this derived the lane from
+        // targets, so a category with no target of its own was invisible when
+        // browsing its lane even though the dashboard counted its spend.
+        // Lane membership comes from the category's own `spend_group` (v6).
+        //
+        // Note this is intentionally broader than a single "everything else"
+        // target in buildBaseFilter: browsing a lane shows ALL of its spend,
+        // whereas that target covers only the part no other target claims.
         const sg = String(params.spend_group);
-        const laneCatIds = new Set(
-          store.targets
-            .filter(
-              (t) =>
-                t.spend_group === sg && t.is_active && t.category_id != null
-            )
-            .map((t) => t.category_id!)
+        const laneByCat = new Map(
+          store.categories.map((c) => [c.id, c.spend_group as string])
         );
         txns = txns.filter(
-          (t) => t.category_id != null && laneCatIds.has(t.category_id)
+          (t) => t.category_id != null && laneByCat.get(t.category_id) === sg
         );
       }
 
