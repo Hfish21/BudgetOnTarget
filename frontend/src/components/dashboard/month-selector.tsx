@@ -25,10 +25,21 @@ export function MonthSelector() {
     );
   }
 
-  const currentValue =
-    selectedYear && selectedMonth
-      ? `${selectedYear}-${selectedMonth}`
-      : "";
+  // Months have loaded but the URL does not name one yet — useMonth is about to
+  // fill it in. Rendering the <select> here would be wrong twice over: its value
+  // would be "" (matching no <option>, so the browser shows the first month
+  // while React believes nothing is selected), and a click landing in this
+  // window races the pending default navigation and gets silently overwritten.
+  if (!selectedYear || !selectedMonth) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg bg-accent px-3 py-2">
+        <Calendar className="size-4 text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">Loading...</span>
+      </div>
+    );
+  }
+
+  const currentValue = `${selectedYear}-${selectedMonth}`;
 
   return (
     <div className="relative">
